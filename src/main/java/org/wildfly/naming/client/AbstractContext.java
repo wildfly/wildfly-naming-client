@@ -134,7 +134,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         }
     }
 
-    protected abstract void bindNative(Name name, final Object obj) throws NamingException;
+    protected void bindNative(Name name, final Object obj) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public void rebind(final String name, final Object obj) throws NamingException {
         Assert.checkNotNullParam("name", name);
@@ -155,7 +157,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         }
     }
 
-    protected abstract void rebindNative(Name name, final Object obj) throws NamingException;
+    protected void rebindNative(Name name, final Object obj) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public void unbind(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
@@ -176,7 +180,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         }
     }
 
-    protected abstract void unbindNative(Name name) throws NamingException;
+    protected void unbindNative(Name name) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public void rename(final String oldName, final String newName) throws NamingException {
         Assert.checkNotNullParam("oldName", oldName);
@@ -208,7 +214,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         rebindNative(nativeOldName, nativeNewName);
     }
 
-    protected abstract void renameNative(Name oldName, Name newName) throws NamingException;
+    protected void renameNative(Name oldName, Name newName) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public CloseableNamingEnumeration<NameClassPair> list(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
@@ -261,7 +269,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         }
     }
 
-    protected abstract void destroySubcontextNative(final Name name) throws NamingException;
+    protected void destroySubcontextNative(final Name name) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public Context createSubcontext(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
@@ -282,7 +292,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         }
     }
 
-    protected abstract Context createSubcontextNative(Name name) throws NamingException;
+    protected Context createSubcontextNative(Name name) throws NamingException {
+        throw Messages.log.readOnlyContext();
+    }
 
     public Name composeName(final Name name, final Name prefix) throws NamingException {
         Name base;
