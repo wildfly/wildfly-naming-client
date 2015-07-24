@@ -96,7 +96,7 @@ public class SimpleName implements Name, Serializable {
         final ArrayList<String> segments = new ArrayList<>();
         final int length = name.length();
         final StringBuilder b = new StringBuilder();
-        int ch;
+        int ch = -1;
         boolean q = false, e = false, sq = false;
         for (int i = 0; i < length; i = name.offsetByCodePoints(i, 1)) {
             ch = name.codePointAt(i);
@@ -128,7 +128,7 @@ public class SimpleName implements Name, Serializable {
                 b.appendCodePoint(ch);
             }
         }
-        if (b.length() > 0) {
+        if (b.length() > 0 || ch == '/') {
             segments.add(b.toString());
         }
         if (q) {

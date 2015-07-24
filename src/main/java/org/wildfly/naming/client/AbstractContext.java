@@ -338,7 +338,11 @@ public abstract class AbstractContext implements Context, AutoCloseable {
             return name;
         }
         for (int i = 1; i < size; i ++) {
-            name.addAll(parser.parse(compositeName.get(i)));
+            final String part = compositeName.get(i);
+            final Name parsed = parser.parse(part);
+            // make sure empty segments are preserved
+            if (parsed.isEmpty()) parsed.add("");
+            name.addAll(parsed);
         }
         return name;
     }
