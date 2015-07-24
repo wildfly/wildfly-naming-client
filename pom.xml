@@ -63,7 +63,7 @@
         <dependency>
             <groupId>org.wildfly.client</groupId>
             <artifactId>wildfly-client-config</artifactId>
-            <version>1.0.0.Alpha3-SNAPSHOT</version>
+            <version>1.0.0.Alpha3</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>

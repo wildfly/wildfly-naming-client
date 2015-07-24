@@ -29,6 +29,8 @@ import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NameParser;
 import javax.naming.NamingException;
+import javax.naming.NoPermissionException;
+import javax.naming.OperationNotSupportedException;
 
 import org.wildfly.common.Assert;
 import org.wildfly.naming.client._private.Messages;
@@ -135,7 +137,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected void bindNative(Name name, final Object obj) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public void rebind(final String name, final Object obj) throws NamingException {
@@ -158,7 +160,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected void rebindNative(Name name, final Object obj) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public void unbind(final String name) throws NamingException {
@@ -181,7 +183,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected void unbindNative(Name name) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public void rename(final String oldName, final String newName) throws NamingException {
@@ -215,7 +217,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected void renameNative(Name oldName, Name newName) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public CloseableNamingEnumeration<NameClassPair> list(final String name) throws NamingException {
@@ -270,7 +272,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected void destroySubcontextNative(final Name name) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public Context createSubcontext(final String name) throws NamingException {
@@ -293,7 +295,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
     }
 
     protected Context createSubcontextNative(Name name) throws NamingException {
-        throw Messages.log.readOnlyContext();
+        throw readOnlyContext();
     }
 
     public Name composeName(final Name name, final Name prefix) throws NamingException {
@@ -351,5 +353,17 @@ public abstract class AbstractContext implements Context, AutoCloseable {
 
     public FastHashtable<String, Object> getEnvironment() throws NamingException {
         return environment;
+    }
+
+    protected static NamingException nameNotFound(final Name name) {
+        return Messages.log.nameNotFound(name, name);
+    }
+
+    protected static NoPermissionException readOnlyContext() {
+        return Messages.log.readOnlyContext();
+    }
+
+    protected static OperationNotSupportedException notSupported() {
+        return Messages.log.notSupported();
     }
 }

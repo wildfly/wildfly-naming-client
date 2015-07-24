@@ -124,7 +124,12 @@ public class SimpleName implements Name, Serializable {
                 sq = true;
             } else if (ch == '\\') {
                 e = true;
+            } else {
+                b.appendCodePoint(ch);
             }
+        }
+        if (b.length() > 0) {
+            segments.add(b.toString());
         }
         if (q) {
             throw Messages.log.missingCloseQuote(sq ? '\'' : '"', name);
@@ -301,5 +306,12 @@ public class SimpleName implements Name, Serializable {
 
     public SimpleName clone() {
         return new SimpleName(segments);
+    }
+
+    public static SimpleName of(final Name name) {
+        if (name instanceof SimpleName) {
+            return (SimpleName) name;
+        }
+        return new SimpleName(name);
     }
 }

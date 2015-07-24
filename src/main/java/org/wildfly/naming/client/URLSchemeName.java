@@ -40,7 +40,7 @@ import org.wildfly.naming.client._private.Messages;
 public class URLSchemeName extends SimpleName {
     private static final long serialVersionUID = - 6031564938591212245L;
 
-    private static final Pattern validPattern = Pattern.compile("^[A-Za-z][-A-Za-z0-9+]*$");
+    private static final Pattern validPattern = Pattern.compile("^([A-Za-z][-A-Za-z0-9+]*)?$");
 
     private final String urlScheme;
 

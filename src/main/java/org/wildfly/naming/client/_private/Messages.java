@@ -35,6 +35,7 @@ import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 import javax.naming.NoPermissionException;
 import javax.naming.NotContextException;
+import javax.naming.OperationNotSupportedException;
 
 import org.jboss.logging.BasicLogger;
 import org.jboss.logging.Logger;
@@ -130,4 +131,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 23, value = "Received an invalid response from the server")
     CommunicationException invalidResponse();
+
+    @Message(id = 24, value = "Naming operation not supported")
+    OperationNotSupportedException notSupported();
 }
