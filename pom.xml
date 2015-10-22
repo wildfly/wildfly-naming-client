@@ -97,5 +97,14 @@
             <artifactId>jboss-remoting</artifactId>
             <version>5.0.0.Beta1-SNAPSHOT</version>
         </dependency>
+
+        <!-- JUnit -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.8.2</version>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 </project>
