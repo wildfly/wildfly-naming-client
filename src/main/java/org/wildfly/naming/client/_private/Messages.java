@@ -134,4 +134,8 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 24, value = "Naming operation not supported")
     OperationNotSupportedException notSupported();
+
+    @LogMessage(level = Logger.Level.INFO)
+    @Message(id = 25, value = "org.jboss.naming.remote.client.InitialContextFactory is deprecated; new applications should use org.wildfly.naming.client.WildFlyInitialContextFactory instead")
+    void oldContextDeprecated();
 }

@@ -28,6 +28,7 @@ import javax.naming.Context;
 import javax.naming.NamingException;
 
 import org.wildfly.naming.client.WildFlyInitialContextFactory;
+import org.wildfly.naming.client._private.Messages;
 
 /**
  * Compatibility class.
@@ -37,6 +38,10 @@ import org.wildfly.naming.client.WildFlyInitialContextFactory;
  */
 @Deprecated
 public final class InitialContextFactory implements javax.naming.spi.InitialContextFactory {
+    static {
+        Messages.log.oldContextDeprecated();
+    }
+
     private final WildFlyInitialContextFactory delegate = new WildFlyInitialContextFactory();
 
     /**
