@@ -66,18 +66,10 @@ public final class WildFlyInitialContext extends InitialContext {
     protected void init(final Hashtable<?, ?> environment) throws NamingException {
     }
 
-    protected Context getURLOrDefaultInitCtx(final String name) throws NamingException {
-        return getURLOrDefaultInitCtx(new URLSchemeName(name));
-    }
-
     protected Context getDefaultInitCtx() throws NamingException {
         throw new NoInitialContextException();
     }
-
-    protected Context getURLOrDefaultInitCtx(final Name name) throws NamingException {
-        return rootContext;
-    }
-
+    
     public FastHashtable<String, Object> getEnvironment() throws NamingException {
         return rootContext.getEnvironment();
     }

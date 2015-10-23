@@ -138,4 +138,7 @@ public interface Messages extends BasicLogger {
     @LogMessage(level = Logger.Level.INFO)
     @Message(id = 25, value = "org.jboss.naming.remote.client.InitialContextFactory is deprecated; new applications should use org.wildfly.naming.client.WildFlyInitialContextFactory instead")
     void oldContextDeprecated();
+
+    @Message(id = 26, value = "No provider for found for URI: %s")
+    OperationNotSupportedException noProviderForUri(String uri);
 }
