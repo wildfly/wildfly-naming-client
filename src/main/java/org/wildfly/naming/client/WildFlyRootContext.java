@@ -109,8 +109,7 @@ public final class WildFlyRootContext implements Context {
     public Object lookup(Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        Context context = getProviderContext(new URLSchemeName(reparsedName.getUrlScheme()+":"));
-        return context.lookup(reparsedName.getName());
+        return getProviderContext(reparsedName.getUrlScheme()).lookup(reparsedName.getName());
     }
 
     @Override
@@ -280,8 +279,7 @@ public final class WildFlyRootContext implements Context {
         return "";
     }
 
-    private Context getProviderContext(URLSchemeName name) throws NamingException {
-        final String nameScheme = name.getURLScheme();
+    private Context getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
         final Object urlString = getEnvironment().get(PROVIDER_URL);
         URI providerUri;
@@ -308,7 +306,7 @@ public final class WildFlyRootContext implements Context {
             } catch (ServiceConfigurationError error) {
                 Messages.log.serviceConfigFailed(error);
             }
-            throw Messages.log.nameNotFound(name, name);
+            throw Messages.log.noProviderForUri(nameScheme);
         }
     }
 
@@ -349,6 +347,10 @@ public final class WildFlyRootContext implements Context {
 
         public Name getName() {
             return name;
+        }
+
+        boolean isEmpty(){
+            return urlScheme == null && name.isEmpty();
         }
     }
 }

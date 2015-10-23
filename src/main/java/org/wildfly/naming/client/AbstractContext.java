@@ -332,12 +332,9 @@ public abstract class AbstractContext implements Context, AutoCloseable {
             return new SimpleName();
         }
         final NameParser parser = getNativeNameParser();
-        Name name = parser.parse(compositeName.get(0));
-        final int size = compositeName.size();
-        if (size == 1) {
-            return name;
-        }
-        for (int i = 1; i < size; i ++) {
+        final Name name = parser.parse(compositeName.get(0));
+        if(name.isEmpty())name.add("");
+        for (int i = 1; i < compositeName.size(); i ++) {
             final String part = compositeName.get(i);
             final Name parsed = parser.parse(part);
             // make sure empty segments are preserved
