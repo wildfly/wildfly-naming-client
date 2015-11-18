@@ -30,9 +30,7 @@ import java.util.List;
 import java.util.function.IntUnaryOperator;
 
 import javax.naming.Binding;
-import javax.naming.CommunicationException;
 import javax.naming.CompositeName;
-import javax.naming.InterruptedNamingException;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NamingException;
@@ -42,9 +40,8 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
-import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.ClientServiceHandle;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.util.BlockingInvocation;
@@ -54,8 +51,10 @@ import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.store.RelativeFederatingContext;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
+import org.xnio.Cancellable;
+import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.OptionMap;
+import org.xnio.IoUtils;
 
 /**
  * The client side of the remote naming transport protocol.
@@ -63,7 +62,7 @@ import org.xnio.OptionMap;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class RemoteClientTransport {
-    static final Attachments.Key<FutureTransport> CONNECTION_KEY = new Attachments.Key<>(FutureTransport.class);
+    static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>("naming", RemoteClientTransport::construct);
 
     private final MarshallingConfiguration configuration;
 
@@ -87,20 +86,64 @@ final class RemoteClientTransport {
         return random & 0xffff;
     }
 
-    static RemoteClientTransport forConnection(final Connection connection) throws InterruptedNamingException, CommunicationException {
-        // start or join connection attempt
-        final Attachments attachments = connection.getAttachments();
-        FutureTransport futureTransport = attachments.getAttachment(CONNECTION_KEY);
-        if (futureTransport != null) {
-            return futureTransport.get();
-        }
-        futureTransport = new FutureTransport();
-        final FutureTransport appearing = attachments.attachIfAbsent(CONNECTION_KEY, futureTransport);
-        if (appearing != null) {
-            return appearing.get();
-        }
-        futureTransport.establish(connection);
-        return futureTransport.get();
+    private static IoFuture<RemoteClientTransport> construct(final Channel channel) {
+        FutureResult<RemoteClientTransport> futureResult = new FutureResult<>(channel.getConnection().getEndpoint().getXnioWorker());
+        channel.receiveMessage(new Channel.Receiver() {
+            public void handleError(final Channel channel, final IOException error) {
+                futureResult.setException(error);
+            }
+
+            public void handleEnd(final Channel channel) {
+                futureResult.setCancelled();
+            }
+
+            public void handleMessage(final Channel channel, final MessageInputStream message) {
+                // this should be the greeting message, get the version list and start from there
+                try (MessageInputStream mis = message) {
+                    int length = mis.readUnsignedByte();
+                    boolean hasOne = false, hasTwo = false;
+                    for (int i = 0; i < length; i ++) {
+                        int v = mis.readUnsignedByte();
+                        if (v == 1) {
+                            hasOne = true;
+                        } else if (v == 2) {
+                            hasTwo = true;
+                        }
+                    }
+                    int version;
+                    if (hasTwo) {
+                        version = 2;
+                    } else if (hasOne) {
+                        version = 1;
+                    } else {
+                        futureResult.setException(new IOException(Messages.log.noCompatibleVersions()));
+                        return;
+                    }
+                    final MarshallingConfiguration configuration = new MarshallingConfiguration();
+                    configuration.setVersion(version == 2 ? 4 : 2);
+                    RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
+                    try (MessageOutputStream os = remoteClientTransport.tracker.allocateMessage()) {
+                        os.write(initialBytes);
+                        os.writeByte(version);
+                    }
+                    remoteClientTransport.start();
+                    futureResult.setResult(remoteClientTransport);
+                } catch (IOException e) {
+                    safeClose(channel);
+                    futureResult.setException(new IOException(Messages.log.connectFailed(e)));
+                    return;
+                }
+            }
+        });
+        futureResult.addCancelHandler(new Cancellable() {
+            public Cancellable cancel() {
+                if (futureResult.setCancelled()) {
+                    IoUtils.safeClose(channel);
+                }
+                return this;
+            }
+        });
+        return futureResult.getIoFuture();
     }
 
     void start() {
@@ -429,108 +472,5 @@ final class RemoteClientTransport {
         final Marshaller marshaller = Marshalling.getProvidedMarshallerFactory("river").createMarshaller(configuration);
         marshaller.start(Marshalling.createByteOutput(os));
         return marshaller;
-    }
-
-    static class FutureTransport {
-        private volatile Object result;
-
-        RemoteClientTransport get() throws InterruptedNamingException, CommunicationException {
-            Object result = this.result;
-            if (result == null) {
-                synchronized (this) {
-                    result = this.result;
-                    while (result == null) try {
-                        wait();
-                    } catch (InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                        throw Messages.log.operationInterrupted();
-                    }
-                }
-            }
-            if (result instanceof RemoteClientTransport) {
-                return (RemoteClientTransport) result;
-            } else {
-                assert result instanceof IOException;
-                throw Messages.log.connectFailed((IOException) result);
-            }
-        }
-
-        void establish(final Connection connection) throws CommunicationException {
-            final IoFuture<Channel> future = connection.openChannel("naming", OptionMap.EMPTY);
-            try {
-                final Channel channel = future.get();
-                // we wait until we receive the server version message to see what it supports
-                channel.receiveMessage(new Channel.Receiver() {
-                    public void handleError(final Channel channel, final IOException error) {
-                        failure(Messages.log.connectFailed(error));
-                        safeClose(channel);
-                    }
-
-                    public void handleEnd(final Channel channel) {
-                        failure(Messages.log.connectionEnded());
-                        safeClose(channel);
-                    }
-
-                    public void handleMessage(final Channel channel, final MessageInputStream message) {
-                        final RemoteClientTransport remoteClientTransport;
-                        // this should be the greeting message, get the version list and start from there
-                        try (MessageInputStream mis = message) {
-                            int length = mis.readUnsignedByte();
-                            boolean hasOne = false, hasTwo = false;
-                            for (int i = 0; i < length; i ++) {
-                                int v = mis.readUnsignedByte();
-                                if (v == 1) {
-                                    hasOne = true;
-                                } else if (v == 2) {
-                                    hasTwo = true;
-                                }
-                            }
-                            int version;
-                            if (hasTwo) {
-                                version = 2;
-                            } else if (hasOne) {
-                                version = 1;
-                            } else {
-                                failure(Messages.log.noCompatibleVersions());
-                                return;
-                            }
-                            final MarshallingConfiguration configuration = new MarshallingConfiguration();
-                            configuration.setVersion(version == 2 ? 4 : 2);
-                            remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
-                            try (MessageOutputStream os = remoteClientTransport.tracker.allocateMessage()) {
-                                os.write(initialBytes);
-                                os.writeByte(version);
-                            }
-                            remoteClientTransport.start();
-                        } catch (IOException e) {
-                            safeClose(channel);
-                            failure(Messages.log.connectFailed(e));
-                            return;
-                        }
-                        success(remoteClientTransport);
-                    }
-                });
-            } catch (IOException e) {
-                synchronized (this) {
-                    result = e;
-                    notifyAll();
-                }
-                throw Messages.log.connectFailed(e);
-            }
-        }
-
-        void success(RemoteClientTransport transport) {
-            synchronized (this) {
-                result = transport;
-                notifyAll();
-            }
-        }
-
-        void failure(CommunicationException ex) {
-            synchronized (this) {
-                result = ex;
-                notifyAll();
-            }
-        }
     }
 }

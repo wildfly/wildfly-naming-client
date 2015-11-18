@@ -20,8 +20,4 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-/**
- * @deprecated Compatibility package, should not be used for new programs.
- */
-@Deprecated
 package org.jboss.naming.remote.client;

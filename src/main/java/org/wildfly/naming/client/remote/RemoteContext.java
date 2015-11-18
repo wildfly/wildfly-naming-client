@@ -43,6 +43,8 @@ import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.store.RelativeFederatingContext;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
+import org.xnio.IoFuture;
+import org.xnio.OptionMap;
 
 /**
  * The remote-server root context.
@@ -66,7 +68,14 @@ final class RemoteContext extends AbstractFederatingContext {
         }
         try {
             final Connection connection = endpoint.getConnection(providerUri).get();
-            return RemoteClientTransport.forConnection(connection);
+            final IoFuture<RemoteClientTransport> future = RemoteClientTransport.SERVICE_HANDLE.getClientService(connection, OptionMap.EMPTY);
+            try {
+                return future.getInterruptibly();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                future.cancel();
+                throw Messages.log.operationInterrupted();
+            }
         } catch (IOException e) {
             throw Messages.log.connectFailed(e);
         }
