@@ -27,10 +27,8 @@ import java.net.URI;
 import java.util.Hashtable;
 
 import javax.naming.Binding;
-import javax.naming.CommunicationException;
 import javax.naming.CompositeName;
 import javax.naming.Context;
-import javax.naming.InterruptedNamingException;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NamingException;
@@ -61,7 +59,7 @@ final class RemoteContext extends AbstractFederatingContext {
         this.providerUri = providerUri;
     }
 
-    RemoteClientTransport getRemoteTransport() throws CommunicationException, InterruptedNamingException {
+    RemoteClientTransport getRemoteTransport() throws NamingException {
         final Endpoint endpoint = RemoteNamingProvider.ENDPOINT_GETTER.getSelector().get();
         if (endpoint == null) {
             throw Messages.log.noRemotingEndpoint();
@@ -77,6 +75,9 @@ final class RemoteContext extends AbstractFederatingContext {
                 throw Messages.log.operationInterrupted();
             }
         } catch (IOException e) {
+            if (e.getCause() instanceof NamingException) {
+                throw (NamingException) e.getCause();
+            }
             throw Messages.log.connectFailed(e);
         }
     }
