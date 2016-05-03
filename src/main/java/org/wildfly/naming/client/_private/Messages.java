@@ -141,4 +141,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 26, value = "No provider for found for URI: %s")
     OperationNotSupportedException noProviderForUri(String uri);
+
+    @Message(id = 27, value = "Invalid naming permission action \"%s\"")
+    IllegalArgumentException invalidPermissionAction(String action);
 }

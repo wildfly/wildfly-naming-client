@@ -27,7 +27,6 @@ import java.net.URI;
 import javax.naming.Context;
 
 import org.jboss.remoting3.Endpoint;
-import org.wildfly.common.selector.Selector;
 import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.util.FastHashtable;
 
@@ -38,8 +37,6 @@ import org.wildfly.naming.client.util.FastHashtable;
  */
 public final class RemoteNamingProvider implements NamingProvider {
 
-    static final Selector.Getter<Endpoint> ENDPOINT_GETTER = Selector.selectorGetterFor(Endpoint.class);
-
     /**
      * Construct a new instance.
      */
@@ -47,7 +44,7 @@ public final class RemoteNamingProvider implements NamingProvider {
     }
 
     public boolean supportsUriScheme(final String providerScheme, final String nameScheme) {
-        final Endpoint endpoint = ENDPOINT_GETTER.getSelector().get();
+        final Endpoint endpoint = Endpoint.getCurrent();
         return endpoint != null && endpoint.isValidUriScheme(providerScheme) && nameScheme == null;
     }
 

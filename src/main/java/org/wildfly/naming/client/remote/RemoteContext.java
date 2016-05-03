@@ -60,7 +60,7 @@ final class RemoteContext extends AbstractFederatingContext {
     }
 
     RemoteClientTransport getRemoteTransport() throws NamingException {
-        final Endpoint endpoint = RemoteNamingProvider.ENDPOINT_GETTER.getSelector().get();
+        final Endpoint endpoint = Endpoint.getCurrent();
         if (endpoint == null) {
             throw Messages.log.noRemotingEndpoint();
         }
