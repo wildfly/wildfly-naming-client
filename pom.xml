@@ -42,6 +42,15 @@
     <version>1.0.0.Beta1-SNAPSHOT</version>
 
     <build>
+        <resources>
+            <resource>
+                <directory>${project.build.sourceDirectory}</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -58,12 +67,17 @@
         <dependency>
             <groupId>org.wildfly.common</groupId>
             <artifactId>wildfly-common</artifactId>
-            <version>1.0.0.Alpha3</version>
+            <version>1.2.0.Beta1</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.client</groupId>
             <artifactId>wildfly-client-config</artifactId>
             <version>1.0.0.Alpha3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.security</groupId>
+            <artifactId>wildfly-elytron</artifactId>
+            <version>1.1.0.Beta6-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
