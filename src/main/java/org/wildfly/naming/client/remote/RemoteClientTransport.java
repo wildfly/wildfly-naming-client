@@ -54,7 +54,6 @@ import org.wildfly.naming.client.util.NamingUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-import org.xnio.IoUtils;
 
 /**
  * The client side of the remote naming transport protocol.
@@ -74,7 +73,7 @@ final class RemoteClientTransport {
         'n', 'a', 'm', 'i', 'n', 'g'
     };
 
-    public RemoteClientTransport(final Channel channel, final int version, final MarshallingConfiguration configuration) {
+    RemoteClientTransport(final Channel channel, final int version, final MarshallingConfiguration configuration) {
         configuration.setClassResolver(new ContextClassResolver());
         this.channel = channel;
         this.configuration = configuration;
@@ -138,7 +137,7 @@ final class RemoteClientTransport {
         futureResult.addCancelHandler(new Cancellable() {
             public Cancellable cancel() {
                 if (futureResult.setCancelled()) {
-                    IoUtils.safeClose(channel);
+                    safeClose(channel);
                 }
                 return this;
             }

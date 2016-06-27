@@ -27,14 +27,13 @@ import java.util.Hashtable;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.naming.Name;
 import javax.naming.NamingException;
 import javax.naming.NoInitialContextException;
 
 import org.wildfly.naming.client.util.FastHashtable;
 
 /**
- * An initial context implementation that discovers {@link NamingProvider} implementations for dispatching naming
+ * An initial context implementation that discovers {@link NamingProviderFactory} implementations for dispatching naming
  * requests.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>

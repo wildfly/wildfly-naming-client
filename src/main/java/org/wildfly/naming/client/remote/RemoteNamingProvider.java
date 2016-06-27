@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2015, Red Hat, Inc., and individual contributors
+ * Copyright 2016, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -22,33 +22,85 @@
 
 package org.wildfly.naming.client.remote;
 
+import java.io.IOException;
 import java.net.URI;
+import java.util.function.Supplier;
 
-import javax.naming.Context;
+import javax.naming.NamingException;
 
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.wildfly.naming.client.NamingCloseable;
 import org.wildfly.naming.client.NamingProvider;
+import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.xnio.FinishedIoFuture;
+import org.xnio.IoFuture;
 
 /**
- * A naming provider supporting JBoss Remoting-based transport.
+ * A provider for JBoss Remoting-based JNDI contexts.  Any scheme which uses JBoss Remoting using this provider will
+ * share a connection and a captured security context.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteNamingProvider implements NamingProvider {
+    private final Endpoint endpoint;
+    private final AuthenticationContext capturedAuthenticationContext;
+    private final Supplier<IoFuture<Connection>> connectionFactory;
+    private final NamingCloseable closeable;
+
+    RemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationContext context, final FastHashtable<String, Object> env) {
+        this.endpoint = endpoint;
+        capturedAuthenticationContext = context;
+        connectionFactory = () -> endpoint.getConnection(providerUri);
+        closeable = NamingCloseable.NULL;
+    }
+
+    RemoteNamingProvider(final Connection connection, final AuthenticationContext context, final FastHashtable<String, Object> env) {
+        this.endpoint = connection.getEndpoint();
+        capturedAuthenticationContext = context;
+        connectionFactory = () -> new FinishedIoFuture<>(connection);
+        closeable = () -> {
+            try {
+                connection.close();
+            } catch (IOException e) {
+                throw Messages.log.namingProviderCloseFailed(e);
+            }
+        };
+    }
 
     /**
-     * Construct a new instance.
+     * Get the Remoting endpoint for this provider.
+     *
+     * @return the Remoting endpoint for this provider (not {@code null})
      */
-    public RemoteNamingProvider() {
+    public Endpoint getEndpoint() {
+        return endpoint;
     }
 
-    public boolean supportsUriScheme(final String providerScheme, final String nameScheme) {
-        final Endpoint endpoint = Endpoint.getCurrent();
-        return endpoint != null && endpoint.isValidUriScheme(providerScheme) && nameScheme == null;
+    /**
+     * Get the connection.  If the connection is not configured as {@code immediate}, then the connection
+     * will not actually be established until this method is called.  The resultant connection should be closed and
+     * discarded in the event of an error, in order to facilitate automatic reconnection.
+     *
+     * @return the connection (not {@code null})
+     * @throws IOException if the connection was not established and establishment failed
+     */
+    public Connection getConnection() throws IOException {
+        return connectionFactory.get().get();
     }
 
-    public Context createRootContext(final String nameScheme, final URI providerUri, final FastHashtable<String, Object> env) {
-        return new RemoteContext(nameScheme, providerUri, env);
+    /**
+     * Get the captured authentication context.
+     *
+     * @return the captured authentication context (not {@code null})
+     */
+    public AuthenticationContext getCapturedAuthenticationContext() {
+        return capturedAuthenticationContext;
+    }
+
+    public void close() throws NamingException {
+        closeable.close();
     }
 }

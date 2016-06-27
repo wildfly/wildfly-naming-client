@@ -115,7 +115,7 @@ public interface Messages extends BasicLogger {
     CommunicationException noRemotingEndpoint();
 
     @Message(id = 18, value = "Failed to connect to remote host")
-    CommunicationException connectFailed(@Cause IOException cause);
+    CommunicationException connectFailed(@Cause Throwable cause);
 
     @Message(id = 19, value = "Naming operation interrupted")
     InterruptedNamingException operationInterrupted();
@@ -144,4 +144,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 27, value = "Invalid naming permission action \"%s\"")
     IllegalArgumentException invalidPermissionAction(String action);
+
+    @Message(id = 28, value = "Naming provider instance close failed")
+    CommunicationException namingProviderCloseFailed(@Cause Throwable cause);
 }

@@ -36,7 +36,8 @@ import org.wildfly.common.Assert;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface CloseableNamingEnumeration<T> extends NamingEnumeration<T>, AutoCloseable {
+public interface CloseableNamingEnumeration<T> extends NamingEnumeration<T>, NamingCloseable {
+
     /**
      * Close the enumeration.
      *

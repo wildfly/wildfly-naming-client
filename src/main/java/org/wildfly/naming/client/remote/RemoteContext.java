@@ -23,10 +23,10 @@
 package org.wildfly.naming.client.remote;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.Hashtable;
 
 import javax.naming.Binding;
+import javax.naming.CommunicationException;
 import javax.naming.CompositeName;
 import javax.naming.Context;
 import javax.naming.Name;
@@ -50,13 +50,14 @@ import org.xnio.OptionMap;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class RemoteContext extends AbstractFederatingContext {
-    private final String scheme;
-    private final URI providerUri;
 
-    RemoteContext(final String scheme, final URI providerUri, final Hashtable<String, Object> env) {
+    private final RemoteNamingProvider provider;
+    private final String scheme;
+
+    RemoteContext(final RemoteNamingProvider provider, final String scheme, final Hashtable<String, Object> env) throws CommunicationException {
         super(FastHashtable.of(env));
+        this.provider = provider;
         this.scheme = scheme;
-        this.providerUri = providerUri;
     }
 
     RemoteClientTransport getRemoteTransport() throws NamingException {
@@ -65,7 +66,7 @@ final class RemoteContext extends AbstractFederatingContext {
             throw Messages.log.noRemotingEndpoint();
         }
         try {
-            final Connection connection = endpoint.getConnection(providerUri).get();
+            final Connection connection = provider.getConnection();
             final IoFuture<RemoteClientTransport> future = RemoteClientTransport.SERVICE_HANDLE.getClientService(connection, OptionMap.EMPTY);
             try {
                 return future.getInterruptibly();
@@ -84,14 +85,14 @@ final class RemoteContext extends AbstractFederatingContext {
 
     protected Object lookupNative(final Name name) throws NamingException {
         if (name.isEmpty()) {
-            return new RemoteContext(scheme, providerUri, getEnvironment());
+            return new RemoteContext(provider, scheme, getEnvironment());
         }
         return getRemoteTransport().lookup(this, name, false);
     }
 
     protected Object lookupLinkNative(final Name name) throws NamingException {
         if (name.isEmpty()) {
-            return new RemoteContext(scheme, providerUri, getEnvironment());
+            return new RemoteContext(provider, scheme, getEnvironment());
         }
         return getRemoteTransport().lookup(this, name, true);
     }

@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2016, Red Hat, Inc., and individual contributors
+ * Copyright 2015, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -20,21 +20,35 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.wildfly.naming.client;
+package org.wildfly.naming.client.remote;
 
+import javax.naming.Context;
 import javax.naming.NamingException;
 
+import org.kohsuke.MetaInfServices;
+import org.wildfly.naming.client.NamingProvider;
+import org.wildfly.naming.client.NamingContextFactory;
+import org.wildfly.naming.client.util.FastHashtable;
+
 /**
- * A provider for a single naming scheme.  Each implementation of a naming provider has different characteristics.
+ * A naming context factory supporting JBoss Remoting-based transport.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface NamingProvider extends AutoCloseable {
+@MetaInfServices
+public final class RemoteNamingContextFactory implements NamingContextFactory {
+
     /**
-     * Close the provider.  This method is called when the corresponding {@code InitialContext} is closed.  This method
-     * should be idempotent.
-     *
-     * @throws NamingException if an error occurred while closing this provider
+     * Construct a new instance.
      */
-    void close() throws NamingException;
+    public RemoteNamingContextFactory() {
+    }
+
+    public boolean supportsUriScheme(final NamingProvider namingProvider, final String nameScheme) {
+        return namingProvider instanceof RemoteNamingProvider && nameScheme == null;
+    }
+
+    public Context createRootContext(final NamingProvider namingProvider, final String nameScheme, final FastHashtable<String, Object> env) throws NamingException {
+        return new RemoteContext((RemoteNamingProvider) namingProvider, nameScheme, env);
+    }
 }

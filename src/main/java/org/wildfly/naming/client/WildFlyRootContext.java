@@ -61,7 +61,8 @@ public final class WildFlyRootContext implements Context {
 
     private final FastHashtable<String, Object> environment;
 
-    private final ServiceLoader<NamingProvider> namingProviderServiceLoader;
+    private final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader;
+    private final ServiceLoader<NamingContextFactory> namingContextServiceLoader;
 
     /**
      * Construct a new instance, searching the thread context class loader for providers.  If no context class loader is
@@ -81,7 +82,14 @@ public final class WildFlyRootContext implements Context {
      */
     public WildFlyRootContext(final FastHashtable<String, Object> environment, final ClassLoader classLoader) {
         this.environment = environment;
-        namingProviderServiceLoader = ServiceLoader.load(NamingProvider.class, classLoader);
+        namingProviderServiceLoader = ServiceLoader.load(NamingProviderFactory.class, classLoader);
+        namingContextServiceLoader = ServiceLoader.load(NamingContextFactory.class, classLoader);
+    }
+
+    private WildFlyRootContext(final FastHashtable<String, Object> environment, final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader, final ServiceLoader<NamingContextFactory> namingContextServiceLoader) {
+        this.environment = environment;
+        this.namingProviderServiceLoader = namingProviderServiceLoader;
+        this.namingContextServiceLoader = namingContextServiceLoader;
     }
 
     private static ClassLoader secureGetContextClassLoader() {
@@ -109,6 +117,9 @@ public final class WildFlyRootContext implements Context {
     public Object lookup(Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
+        if (reparsedName.isEmpty()) {
+            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+        }
         return getProviderContext(reparsedName.getUrlScheme()).lookup(reparsedName.getName());
     }
 
@@ -231,6 +242,9 @@ public final class WildFlyRootContext implements Context {
     public Object lookupLink(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
+        if (reparsedName.isEmpty()) {
+            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+        }
         return getProviderContext(reparsedName.getUrlScheme()).lookupLink(reparsedName.getName());
     }
 
@@ -294,14 +308,25 @@ public final class WildFlyRootContext implements Context {
             return NamingUtils.emptyContext(getEnvironment());
         }
         // get active naming providers
-        final ServiceLoader<NamingProvider> loader = this.namingProviderServiceLoader;
-        synchronized (loader) {
-            final Iterator<NamingProvider> iterator = loader.iterator();
+        final ServiceLoader<NamingProviderFactory> providerLoader = this.namingProviderServiceLoader;
+        final ServiceLoader<NamingContextFactory> contextLoader = this.namingContextServiceLoader;
+        synchronized (providerLoader) {
+            final Iterator<NamingProviderFactory> providerIterator = providerLoader.iterator();
             for (;;) try {
-                if (! iterator.hasNext()) break;
-                final NamingProvider provider = iterator.next();
-                if (provider.supportsUriScheme(providerScheme, nameScheme)) {
-                    return provider.createRootContext(providerScheme, providerUri, getEnvironment());
+                if (! providerIterator.hasNext()) break;
+                final NamingProviderFactory providerFactory = providerIterator.next();
+                if (providerFactory.supportsUriScheme(providerScheme)) {
+                    final NamingProvider provider = providerFactory.createProvider(providerUri, getEnvironment());
+                    final Iterator<NamingContextFactory> contextIterator = contextLoader.iterator();
+                    for (;;) try {
+                        if (! contextIterator.hasNext()) break;
+                        final NamingContextFactory contextFactory = contextIterator.next();
+                        if (contextFactory.supportsUriScheme(provider, nameScheme)) {
+                            return contextFactory.createRootContext(provider, nameScheme, getEnvironment());
+                        }
+                    } catch (ServiceConfigurationError error) {
+                        Messages.log.serviceConfigFailed(error);
+                    }
                 }
             } catch (ServiceConfigurationError error) {
                 Messages.log.serviceConfigFailed(error);

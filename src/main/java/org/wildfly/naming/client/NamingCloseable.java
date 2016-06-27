@@ -25,16 +25,20 @@ package org.wildfly.naming.client;
 import javax.naming.NamingException;
 
 /**
- * A provider for a single naming scheme.  Each implementation of a naming provider has different characteristics.
+ * A common interface for naming entities which may be closed.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public interface NamingProvider extends AutoCloseable {
+public interface NamingCloseable extends AutoCloseable {
     /**
-     * Close the provider.  This method is called when the corresponding {@code InitialContext} is closed.  This method
-     * should be idempotent.
+     * Close this object.
      *
-     * @throws NamingException if an error occurred while closing this provider
+     * @throws NamingException if closing this object failed for some reason
      */
     void close() throws NamingException;
+
+    /**
+     * An instance which performs no action on close.
+     */
+    NamingCloseable NULL = () -> {};
 }

@@ -305,7 +305,7 @@ public class SimpleName implements Name, Serializable {
     }
 
     public SimpleName clone() {
-        return new SimpleName(segments);
+        return new SimpleName((Collection<String>) segments);
     }
 
     public static SimpleName of(final Name name) {
