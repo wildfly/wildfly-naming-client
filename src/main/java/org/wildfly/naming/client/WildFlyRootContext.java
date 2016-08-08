@@ -304,7 +304,7 @@ public final class WildFlyRootContext implements Context {
         }
         final String providerScheme = providerUri == null ? null : providerUri.getScheme();
         // check for empty
-        if (nameScheme.isEmpty() && (providerScheme == null || providerScheme.isEmpty())) {
+        if ((nameScheme == null || nameScheme.isEmpty()) && (providerScheme == null || providerScheme.isEmpty())) {
             return NamingUtils.emptyContext(getEnvironment());
         }
         // get active naming providers
