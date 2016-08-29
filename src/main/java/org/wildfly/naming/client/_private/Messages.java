@@ -147,4 +147,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 28, value = "Naming provider instance close failed")
     CommunicationException namingProviderCloseFailed(@Cause Throwable cause);
+
+    @Message(id = 29, value = "Invalid leading bytes in header")
+    CommunicationException invalidHeader();
 }

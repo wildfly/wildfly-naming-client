@@ -26,6 +26,7 @@ import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.IntUnaryOperator;
 
@@ -99,6 +100,12 @@ final class RemoteClientTransport {
             public void handleMessage(final Channel channel, final MessageInputStream message) {
                 // this should be the greeting message, get the version list and start from there
                 try (MessageInputStream mis = message) {
+                    final byte[] namingHeader = new byte[initialBytes.length];
+                    mis.read(namingHeader);
+                    if (! Arrays.equals(namingHeader, initialBytes)) {
+                        futureResult.setException(new IOException(Messages.log.invalidHeader()));
+                        return;
+                    }
                     int length = mis.readUnsignedByte();
                     boolean hasOne = false, hasTwo = false;
                     for (int i = 0; i < length; i ++) {
