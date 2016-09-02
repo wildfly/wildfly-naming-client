@@ -59,7 +59,7 @@ public class RelativeFederatingContext extends AbstractFederatingContext {
         if (name.isEmpty()) {
             return new RelativeFederatingContext(new FastHashtable<>(getEnvironment()), rootContext, prefix);
         }
-        return rootContext.lookup(getAbsoluteName(name));
+        return rootContext.lookup(decomposeName(getAbsoluteName(name)));
     }
 
     protected void bindNative(final Name name, final Object obj) throws NamingException {
