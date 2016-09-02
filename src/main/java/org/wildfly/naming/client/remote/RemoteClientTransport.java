@@ -22,6 +22,7 @@
 
 package org.wildfly.naming.client.remote;
 
+import static org.wildfly.naming.client.util.NamingUtils.namingException;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
@@ -164,9 +165,14 @@ final class RemoteClientTransport {
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
                 try (MessageInputStream mis = message) {
+                    final int messageId = mis.readUnsignedByte();
                     final int id = readId(mis);
                     final int result = mis.readUnsignedByte();
-                    tracker.signalResponse(id, result, mis, true);
+                    if (result == Protocol.SUCCESS || result == Protocol.FAILURE) {
+                        tracker.signalResponse(id, messageId, mis, true);
+                    } else {
+                        throw Messages.log.outcomeNotUnderstood();
+                    }
                     channel.receiveMessage(this);
                 } catch (IOException e) {
                     safeClose(channel);
@@ -205,13 +211,20 @@ final class RemoteClientTransport {
             }
             final BlockingInvocation.Response response = invocation.getResponse();
             try (MessageInputStream is = response.getInputStream()) {
-                if (is.readUnsignedByte() == Protocol.P_CONTEXT) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_CONTEXT) {
                     return new RelativeFederatingContext(new FastHashtable<>(context.getEnvironment()), context, NamingUtils.toCompositeName(name));
-                } else if (is.readUnsignedByte() != Protocol.P_OBJECT) {
+                } else if (parameterType == Protocol.P_OBJECT) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                        return unmarshaller.readObject();
+                    }
+                } else if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        throw namingException("Failed to lookup", exception);
+                    }
+                } else {
                     throw Messages.log.invalidResponse();
-                }
-                try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
-                    return unmarshaller.readObject();
                 }
             }
         } catch (ClassNotFoundException | IOException e) {

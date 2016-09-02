@@ -132,4 +132,19 @@ public final class NamingUtils {
             log.contextCloseFailed(context, t);
         }
     }
+
+    /**
+     * Create a naming exception with a root cause.
+     *
+     * @param message the message
+     * @param cause the cause, or {@code null} for none
+     * @return the naming exception
+     */
+    public static NamingException namingException(final String message, final Throwable cause) {
+        final NamingException namingException = new NamingException(message);
+        if (cause != null) {
+            namingException.setRootCause(cause);
+        }
+        return namingException;
+    }
 }
