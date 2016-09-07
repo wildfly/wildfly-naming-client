@@ -150,4 +150,10 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 29, value = "Invalid leading bytes in header")
     CommunicationException invalidHeader();
+
+    @Message(id = 30, value = "Unexpected response parameter received")
+    IOException unexpectedResponseParameter();
+
+    @Message(id = 31, value = "Outcome not understood")
+    IOException outcomeNotUnderstood();
 }

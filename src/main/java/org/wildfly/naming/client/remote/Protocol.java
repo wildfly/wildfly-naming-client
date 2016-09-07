@@ -52,4 +52,10 @@ final class Protocol {
     // unused                           = 0x0E;
     // unused                           = 0x0F;
     static final int CMD_LOOKUP_LINK    = 0x10;
+
+    /*
+     * Outcomes
+     */
+    static final int SUCCESS = 0x00;
+    static final int FAILURE = 0x01;
 }
