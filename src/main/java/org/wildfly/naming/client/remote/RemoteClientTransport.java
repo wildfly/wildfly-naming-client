@@ -164,18 +164,19 @@ final class RemoteClientTransport {
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
-                try (MessageInputStream mis = message) {
-                    final int messageId = mis.readUnsignedByte();
-                    final int id = readId(mis);
-                    final int result = mis.readUnsignedByte();
+                try {
+                    final int messageId = message.readUnsignedByte();
+                    final int id = readId(message);
+                    final int result = message.readUnsignedByte();
                     if (result == Protocol.SUCCESS || result == Protocol.FAILURE) {
-                        tracker.signalResponse(id, messageId, mis, true);
+                        tracker.signalResponse(id, messageId, message, true);
                     } else {
                         throw Messages.log.outcomeNotUnderstood();
                     }
                     channel.receiveMessage(this);
                 } catch (IOException e) {
                     safeClose(channel);
+                    safeClose(message);
                 }
             }
         });
