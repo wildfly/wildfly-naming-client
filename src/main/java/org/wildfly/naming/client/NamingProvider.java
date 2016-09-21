@@ -22,6 +22,8 @@
 
 package org.wildfly.naming.client;
 
+import java.net.URI;
+
 import javax.naming.NamingException;
 
 /**
@@ -30,6 +32,13 @@ import javax.naming.NamingException;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public interface NamingProvider extends AutoCloseable {
+    /**
+     * Get the provider URI of this provider.
+     *
+     * @return the provider URI of this provider
+     */
+    URI getProviderUri();
+
     /**
      * Close the provider.  This method is called when the corresponding {@code InitialContext} is closed.  This method
      * should be idempotent.

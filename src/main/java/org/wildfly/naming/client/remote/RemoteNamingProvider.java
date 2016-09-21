@@ -49,9 +49,11 @@ public final class RemoteNamingProvider implements NamingProvider {
     private final AuthenticationContext capturedAuthenticationContext;
     private final Supplier<IoFuture<Connection>> connectionFactory;
     private final NamingCloseable closeable;
+    private final URI providerUri;
 
     RemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationContext context, final FastHashtable<String, Object> env) {
         this.endpoint = endpoint;
+        this.providerUri = providerUri;
         capturedAuthenticationContext = context;
         connectionFactory = () -> endpoint.getConnection(providerUri);
         closeable = NamingCloseable.NULL;
@@ -59,6 +61,7 @@ public final class RemoteNamingProvider implements NamingProvider {
 
     RemoteNamingProvider(final Connection connection, final AuthenticationContext context, final FastHashtable<String, Object> env) {
         this.endpoint = connection.getEndpoint();
+        providerUri = connection.getPeerURI();
         capturedAuthenticationContext = context;
         connectionFactory = () -> new FinishedIoFuture<>(connection);
         closeable = () -> {
@@ -98,6 +101,10 @@ public final class RemoteNamingProvider implements NamingProvider {
      */
     public AuthenticationContext getCapturedAuthenticationContext() {
         return capturedAuthenticationContext;
+    }
+
+    public URI getProviderUri() {
+        return providerUri;
     }
 
     public void close() throws NamingException {
