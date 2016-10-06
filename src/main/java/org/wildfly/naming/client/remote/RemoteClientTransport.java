@@ -222,7 +222,11 @@ final class RemoteClientTransport {
                 } else if (parameterType == Protocol.P_EXCEPTION) {
                     try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
                         final Exception exception = unmarshaller.readObject(Exception.class);
-                        throw namingException("Failed to lookup", exception);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to lookup", exception);
+                        }
                     }
                 } else {
                     throw Messages.log.invalidResponse();
