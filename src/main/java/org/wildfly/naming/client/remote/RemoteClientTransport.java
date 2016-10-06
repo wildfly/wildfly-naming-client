@@ -441,7 +441,7 @@ final class RemoteClientTransport {
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
-                messageOutputStream.writeByte(Protocol.CMD_LIST);
+                messageOutputStream.writeByte(Protocol.CMD_LIST_BINDINGS);
                 writeId(messageOutputStream, invocation.getIndex());
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
@@ -468,7 +468,7 @@ final class RemoteClientTransport {
                             prefix.add(relName);
                             final RelativeFederatingContext context = new RelativeFederatingContext(new FastHashtable<String, Object>(remoteContext.getEnvironment()), remoteContext, prefix);
                             results.add(new Binding(relName, context, true));
-                        } else if (b == Protocol.P_OBJECT) {
+                        } else if (b == Protocol.P_BINDING) {
                             results.add(unmarshaller.readObject(Binding.class));
                         } else {
                             throw Messages.log.invalidResponse();
