@@ -222,7 +222,11 @@ final class RemoteClientTransport {
                 } else if (parameterType == Protocol.P_EXCEPTION) {
                     try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
                         final Exception exception = unmarshaller.readObject(Exception.class);
-                        throw namingException("Failed to lookup", exception);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to lookup", exception);
+                        }
                     }
                 } else {
                     throw Messages.log.invalidResponse();
@@ -437,7 +441,7 @@ final class RemoteClientTransport {
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
-                messageOutputStream.writeByte(Protocol.CMD_LIST);
+                messageOutputStream.writeByte(Protocol.CMD_LIST_BINDINGS);
                 writeId(messageOutputStream, invocation.getIndex());
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
@@ -464,7 +468,7 @@ final class RemoteClientTransport {
                             prefix.add(relName);
                             final RelativeFederatingContext context = new RelativeFederatingContext(new FastHashtable<String, Object>(remoteContext.getEnvironment()), remoteContext, prefix);
                             results.add(new Binding(relName, context, true));
-                        } else if (b == Protocol.P_OBJECT) {
+                        } else if (b == Protocol.P_BINDING) {
                             results.add(unmarshaller.readObject(Binding.class));
                         } else {
                             throw Messages.log.invalidResponse();
