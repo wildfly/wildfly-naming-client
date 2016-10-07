@@ -109,7 +109,7 @@
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>5.0.0.Beta4</version>
+            <version>5.0.0.Beta5</version>
         </dependency>
 
         <!-- JUnit -->
