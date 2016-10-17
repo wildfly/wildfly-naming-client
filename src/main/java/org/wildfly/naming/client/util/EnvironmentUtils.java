@@ -59,6 +59,8 @@ public final class EnvironmentUtils {
         final Object rawCredential = env.get(Context.SECURITY_CREDENTIALS);
         if (rawCredential == null) {
             return null;
+        } else if (rawCredential instanceof IdentityCredentials) {
+            return (IdentityCredentials) rawCredential;
         } else if (rawCredential instanceof Collection<?>) {
             IdentityCredentials c = IdentityCredentials.NONE;
             for (Object item : (Collection<?>) rawCredential) {
