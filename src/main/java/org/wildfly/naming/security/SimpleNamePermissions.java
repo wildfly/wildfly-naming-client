@@ -30,6 +30,9 @@ import org.wildfly.naming.client.SimpleName;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class SimpleNamePermissions {
+    private SimpleNamePermissions() {
+    }
+
     /**
      * Determine whether the first name implies the second name.
      *
