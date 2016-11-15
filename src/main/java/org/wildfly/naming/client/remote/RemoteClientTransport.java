@@ -44,6 +44,7 @@ import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ClientServiceHandle;
+import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.util.BlockingInvocation;
@@ -65,15 +66,14 @@ import org.xnio.IoFuture;
 final class RemoteClientTransport {
     static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>("naming", RemoteClientTransport::construct);
 
-    private final MarshallingConfiguration configuration;
-
-    private final InvocationTracker tracker;
-    private final Channel channel;
-    private final int version;
-
     private static final byte[] initialBytes = {
         'n', 'a', 'm', 'i', 'n', 'g'
     };
+
+    private final MarshallingConfiguration configuration;
+    private final InvocationTracker tracker;
+    private final Channel channel;
+    private final int version;
 
     RemoteClientTransport(final Channel channel, final int version, final MarshallingConfiguration configuration) {
         configuration.setClassResolver(new ContextClassResolver());
@@ -194,7 +194,12 @@ final class RemoteClientTransport {
         }
     }
 
-    Object lookup(final RemoteContext context, final Name name, final boolean preserveLinks) throws NamingException {
+    Object lookup(final RemoteContext context, final Name name, final ConnectionPeerIdentity peerIdentity, final boolean preserveLinks) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -207,6 +212,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
                 }
             }
@@ -241,22 +247,31 @@ final class RemoteClientTransport {
         }
     }
 
-    void bind(final Name name, final Object obj, final boolean rebind) throws NamingException {
+    void bind(final Name name, final Object obj, final ConnectionPeerIdentity peerIdentity, final boolean rebind) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(rebind ? Protocol.CMD_REBIND : Protocol.CMD_BIND);
                 writeId(messageOutputStream, invocation.getIndex());
-                try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
-                    if (version == 1) {
+                if (version == 1) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
-                    } else {
-                        marshaller.writeUTF(NamingUtils.toCompositeName(name).toString());
+                        marshaller.writeByte(Protocol.P_OBJECT);
+                        marshaller.writeObject(obj);
                     }
-                    if (version == 1) marshaller.writeByte(Protocol.P_OBJECT);
-                    marshaller.writeObject(obj);
+                } else {
+                    messageOutputStream.writeInt(authId);
+                    messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                        marshaller.writeObject(obj);
+                    }
                 }
             }
             // no content
@@ -270,7 +285,12 @@ final class RemoteClientTransport {
         }
     }
 
-    void unbind(final Name name) throws NamingException {
+    void unbind(final Name name, final ConnectionPeerIdentity peerIdentity) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -283,6 +303,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
                 }
             }
@@ -297,7 +318,12 @@ final class RemoteClientTransport {
         }
     }
 
-    void rename(final Name oldName, final Name newName) throws NamingException {
+    void rename(final Name oldName, final Name newName, final ConnectionPeerIdentity peerIdentity) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -311,6 +337,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(newName));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(oldName).toString());
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(newName).toString());
                 }
@@ -326,7 +353,12 @@ final class RemoteClientTransport {
         }
     }
 
-    void destroySubcontext(final Name name) throws NamingException {
+    void destroySubcontext(final Name name, final ConnectionPeerIdentity peerIdentity) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -339,6 +371,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
                 }
             }
@@ -353,7 +386,12 @@ final class RemoteClientTransport {
         }
     }
 
-    void createSubcontext(final CompositeName compositeName) throws NamingException {
+    void createSubcontext(final CompositeName compositeName, final ConnectionPeerIdentity peerIdentity) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -366,6 +404,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(compositeName);
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(compositeName.toString());
                 }
             }
@@ -380,8 +419,13 @@ final class RemoteClientTransport {
         }
     }
 
-    CloseableNamingEnumeration<NameClassPair> list(final Name name) throws NamingException {
+    CloseableNamingEnumeration<NameClassPair> list(final Name name, final ConnectionPeerIdentity peerIdentity) throws NamingException {
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final CompositeName compositeName = NamingUtils.toCompositeName(name);
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
@@ -394,6 +438,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(compositeName.toString());
                 }
             }
@@ -435,7 +480,12 @@ final class RemoteClientTransport {
         }
     }
 
-    CloseableNamingEnumeration<Binding> listBindings(final Name name, final RemoteContext remoteContext) throws NamingException {
+    CloseableNamingEnumeration<Binding> listBindings(final Name name, final RemoteContext remoteContext, final ConnectionPeerIdentity peerIdentity) throws NamingException {
+        final int authId = peerIdentity.getId();
+        final int version = this.version;
+        if (version == 1 && authId != 0) {
+            throw Messages.log.connectionSharingUnsupported();
+        }
         final BlockingInvocation invocation = tracker.addInvocation(BlockingInvocation::new);
         final CompositeName compositeName = NamingUtils.toCompositeName(name);
         try {
@@ -449,6 +499,7 @@ final class RemoteClientTransport {
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
+                    messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(compositeName.toString());
                 }
             }

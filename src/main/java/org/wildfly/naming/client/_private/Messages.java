@@ -45,6 +45,7 @@ import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
 import org.jboss.logging.annotations.Property;
 import org.wildfly.naming.client.RenameAcrossNamingProvidersException;
+import org.wildfly.security.auth.AuthenticationException;
 
 @MessageLogger(projectCode = "WFNAM", length = 5)
 public interface Messages extends BasicLogger {
@@ -156,4 +157,10 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 31, value = "Outcome not understood")
     IOException outcomeNotUnderstood();
+
+    @Message(id = 32, value = "Peer authentication failed")
+    javax.naming.AuthenticationException authenticationFailed(@Cause AuthenticationException cause);
+
+    @Message(id = 33, value = "Connection sharing not supported")
+    javax.naming.AuthenticationException connectionSharingUnsupported();
 }

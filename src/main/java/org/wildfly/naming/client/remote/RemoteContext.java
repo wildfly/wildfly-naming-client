@@ -34,6 +34,7 @@ import javax.naming.NameClassPair;
 import javax.naming.NamingException;
 
 import org.jboss.remoting3.Connection;
+import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.Endpoint;
 import org.wildfly.naming.client.AbstractFederatingContext;
 import org.wildfly.naming.client.CloseableNamingEnumeration;
@@ -60,13 +61,13 @@ final class RemoteContext extends AbstractFederatingContext {
         this.scheme = scheme;
     }
 
-    RemoteClientTransport getRemoteTransport() throws NamingException {
+    RemoteClientTransport getRemoteTransport(ConnectionPeerIdentity peerIdentity) throws NamingException {
         final Endpoint endpoint = Endpoint.getCurrent();
         if (endpoint == null) {
             throw Messages.log.noRemotingEndpoint();
         }
         try {
-            final Connection connection = provider.getConnection();
+            final Connection connection = peerIdentity.getConnection();
             final IoFuture<RemoteClientTransport> future = RemoteClientTransport.SERVICE_HANDLE.getClientService(connection, OptionMap.EMPTY);
             try {
                 return future.getInterruptibly();
@@ -87,47 +88,57 @@ final class RemoteContext extends AbstractFederatingContext {
         if (name.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
-        return getRemoteTransport().lookup(this, name, false);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        return getRemoteTransport(peerIdentity).lookup(this, name, peerIdentity, false);
     }
 
     protected Object lookupLinkNative(final Name name) throws NamingException {
         if (name.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
-        return getRemoteTransport().lookup(this, name, true);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        return getRemoteTransport(peerIdentity).lookup(this, name, peerIdentity, true);
     }
 
     protected void bindNative(final Name name, final Object obj) throws NamingException {
-        getRemoteTransport().bind(name, obj, false);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        getRemoteTransport(peerIdentity).bind(name, obj, peerIdentity, false);
     }
 
     protected void rebindNative(final Name name, final Object obj) throws NamingException {
-        getRemoteTransport().bind(name, obj, true);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        getRemoteTransport(peerIdentity).bind(name, obj, peerIdentity, true);
     }
 
     protected void unbindNative(final Name name) throws NamingException {
-        getRemoteTransport().unbind(name);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        getRemoteTransport(peerIdentity).unbind(name, peerIdentity);
     }
 
     protected void renameNative(final Name oldName, final Name newName) throws NamingException {
-        getRemoteTransport().rename(oldName, newName);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        getRemoteTransport(peerIdentity).rename(oldName, newName, peerIdentity);
     }
 
     protected CloseableNamingEnumeration<NameClassPair> listNative(final Name name) throws NamingException {
-        return getRemoteTransport().list(name);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        return getRemoteTransport(peerIdentity).list(name, peerIdentity);
     }
 
     protected CloseableNamingEnumeration<Binding> listBindingsNative(final Name name) throws NamingException {
-        return getRemoteTransport().listBindings(name, this);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        return getRemoteTransport(peerIdentity).listBindings(name, this, peerIdentity);
     }
 
     protected void destroySubcontextNative(final Name name) throws NamingException {
-        getRemoteTransport().destroySubcontext(name);
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+        getRemoteTransport(peerIdentity).destroySubcontext(name, peerIdentity);
     }
 
     protected Context createSubcontextNative(final Name name) throws NamingException {
+        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
         final CompositeName compositeName = NamingUtils.toCompositeName(name);
-        getRemoteTransport().createSubcontext(compositeName);
+        getRemoteTransport(peerIdentity).createSubcontext(compositeName, peerIdentity);
         return new RelativeFederatingContext(getEnvironment(), this, compositeName);
     }
 

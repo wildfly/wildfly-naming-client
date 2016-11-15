@@ -26,6 +26,8 @@ import java.net.URI;
 
 import javax.naming.NamingException;
 
+import org.wildfly.security.auth.client.PeerIdentity;
+
 /**
  * A provider for a single naming scheme.  Each implementation of a naming provider has different characteristics.
  *
@@ -35,9 +37,17 @@ public interface NamingProvider extends AutoCloseable {
     /**
      * Get the provider URI of this provider.
      *
-     * @return the provider URI of this provider
+     * @return the provider URI of this provider (must not be {@code null})
      */
     URI getProviderUri();
+
+    /**
+     * Get the peer identity to use for context operations.  The identity may be fixed or it may vary, depending on the context configuration.
+     *
+     * @return the peer identity to use (must not be {@code null})
+     * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
+     */
+    PeerIdentity getPeerIdentityForNaming() throws NamingException;
 
     /**
      * Close the provider.  This method is called when the corresponding {@code InitialContext} is closed.  This method
@@ -45,5 +55,6 @@ public interface NamingProvider extends AutoCloseable {
      *
      * @throws NamingException if an error occurred while closing this provider
      */
-    void close() throws NamingException;
+    default void close() throws NamingException {
+    }
 }

@@ -97,6 +97,12 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.jboss.jdeparser</groupId>
+            <artifactId>jdeparser</artifactId>
+            <version>2.0.2.Final</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling</artifactId>
             <version>2.0.0.Beta2</version>
