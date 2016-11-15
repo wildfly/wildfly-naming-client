@@ -77,7 +77,7 @@
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron</artifactId>
-            <version>1.1.0.Beta7</version>
+            <version>1.1.0.Beta14</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
@@ -109,7 +109,7 @@
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>5.0.0.Beta5</version>
+            <version>5.0.0.Beta8</version>
         </dependency>
 
         <!-- JUnit -->
