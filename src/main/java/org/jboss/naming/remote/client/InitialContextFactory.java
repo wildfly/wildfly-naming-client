@@ -42,6 +42,19 @@ public final class InitialContextFactory implements javax.naming.spi.InitialCont
         Messages.log.oldContextDeprecated();
     }
 
+    @Deprecated
+    public static final String ENDPOINT = "jboss.naming.client.endpoint";
+    @Deprecated
+    public static final String CONNECTION = "jboss.naming.client.connection";
+    @Deprecated
+    public static final String SETUP_EJB_CONTEXT = "jboss.naming.client.ejb.context";
+    @Deprecated
+    public static final String CALLBACK_HANDLER_KEY = "jboss.naming.client.security.callback.handler.class";
+    @Deprecated
+    public static final String PASSWORD_BASE64_KEY = "jboss.naming.client.security.password.base64";
+    @Deprecated
+    public static final String REALM_KEY = "jboss.naming.client.security.realm";
+
     private final WildFlyInitialContextFactory delegate = new WildFlyInitialContextFactory();
 
     /**
