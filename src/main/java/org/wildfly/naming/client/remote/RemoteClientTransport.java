@@ -204,7 +204,7 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
@@ -251,7 +251,7 @@ final class RemoteClientTransport {
                 try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                     if (version == 1) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     } else {
                         marshaller.writeUTF(NamingUtils.toCompositeName(name).toString());
                     }
@@ -280,7 +280,7 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
@@ -306,9 +306,9 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(oldName);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(oldName));
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(newName);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(newName));
                     }
                 } else {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(oldName).toString());
@@ -336,7 +336,7 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
@@ -391,7 +391,7 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
                     messageOutputStream.writeUTF(compositeName.toString());
@@ -446,7 +446,7 @@ final class RemoteClientTransport {
                 if (version == 1) {
                     try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
                         marshaller.writeByte(Protocol.P_NAME);
-                        marshaller.writeObject(name);
+                        marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
                 } else {
                     messageOutputStream.writeUTF(compositeName.toString());

@@ -24,6 +24,7 @@ package org.wildfly.naming.client.util;
 
 import static org.wildfly.naming.client._private.Messages.log;
 
+import java.util.Enumeration;
 import java.util.Hashtable;
 
 import javax.naming.Binding;
@@ -36,6 +37,7 @@ import javax.naming.NamingException;
 
 import org.wildfly.naming.client.AbstractContext;
 import org.wildfly.naming.client.CloseableNamingEnumeration;
+import org.wildfly.naming.client._private.Messages;
 
 /**
  * Naming-related utilities.
@@ -58,6 +60,35 @@ public final class NamingUtils {
         } else {
             final CompositeName compositeName = new CompositeName();
             compositeName.add(name.toString());
+            return compositeName;
+        }
+    }
+
+    /**
+     * Create a CompositeName where each name segment is equal to the name segment in the source name.
+     *
+     * @param name the source name
+     * @return a {@link CompositeName} where each name segment is equal to the name segment in the source name
+     * @throws InvalidNameException if an error occurs while converting the source name to a {@link CompositeName}
+     */
+    public static CompositeName toDecomposedCompositeName(final Name name) throws InvalidNameException {
+        if (name instanceof CompositeName) {
+            return (CompositeName) name;
+        } else {
+            final CompositeName compositeName = new CompositeName();
+            final Enumeration<String> enumeration = name.getAll();
+            if (enumeration.hasMoreElements()) {
+                int idx = 0;
+                String item;
+                do {
+                    item = enumeration.nextElement();
+                    if (item == null) {
+                        throw Messages.log.invalidNullSegment(idx);
+                    }
+                    compositeName.add(item);
+                    idx ++;
+                } while (enumeration.hasMoreElements());
+            }
             return compositeName;
         }
     }
