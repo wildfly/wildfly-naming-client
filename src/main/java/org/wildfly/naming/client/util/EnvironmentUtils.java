@@ -30,8 +30,11 @@ import java.util.Hashtable;
 import javax.naming.Context;
 import javax.security.auth.x500.X500PrivateCredential;
 
+import org.ietf.jgss.GSSCredential;
+import org.wildfly.common.Assert;
 import org.wildfly.security.auth.server.IdentityCredentials;
 import org.wildfly.security.credential.Credential;
+import org.wildfly.security.credential.GSSCredentialCredential;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.credential.X509CertificateChainPrivateCredential;
 import org.wildfly.security.credential.X509CertificateChainPublicCredential;
@@ -56,7 +59,21 @@ public final class EnvironmentUtils {
      * @return the security credentials, or {@code null} if none was present
      */
     public static IdentityCredentials getSecurityCredentials(Hashtable<String, ?> env) {
-        final Object rawCredential = env.get(Context.SECURITY_CREDENTIALS);
+        return getSecurityCredentials(env, Context.SECURITY_CREDENTIALS);
+    }
+
+    /**
+     * Get the security credential, if any.  If an entry is present but not recognized, an empty credential set is
+     * returned.
+     *
+     * @param env the environment (must not be {@code null})
+     * @param propertyName the property name (must not be {@code null})
+     * @return the security credentials, or {@code null} if none was present
+     */
+    public static IdentityCredentials getSecurityCredentials(final Hashtable<String, ?> env, final String propertyName) {
+        Assert.checkNotNullParam("env", env);
+        Assert.checkNotNullParam("propertyName", propertyName);
+        final Object rawCredential = env.get(propertyName);
         if (rawCredential == null) {
             return null;
         } else if (rawCredential instanceof IdentityCredentials) {
@@ -83,6 +100,8 @@ public final class EnvironmentUtils {
             return IdentityCredentials.NONE;
         } else if (rawCredential instanceof Credential) {
             return IdentityCredentials.NONE.withCredential((Credential) rawCredential);
+        } else if (rawCredential instanceof GSSCredential) {
+            return IdentityCredentials.NONE.withCredential(new GSSCredentialCredential((GSSCredential) rawCredential));
         } else if (rawCredential instanceof Password) {
             return IdentityCredentials.NONE.withCredential(new PasswordCredential((Password) rawCredential));
         } else if (rawCredential instanceof X509Certificate) {
