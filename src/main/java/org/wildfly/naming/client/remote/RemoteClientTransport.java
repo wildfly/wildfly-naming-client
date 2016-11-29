@@ -22,6 +22,10 @@
 
 package org.wildfly.naming.client.remote;
 
+import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
+import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
+import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
+import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
 import static org.wildfly.naming.client.util.NamingUtils.namingException;
 import static org.xnio.IoUtils.safeClose;
 
@@ -39,7 +43,6 @@ import javax.naming.NamingException;
 
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
-import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
@@ -64,7 +67,7 @@ import org.xnio.IoFuture;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 final class RemoteClientTransport {
-    static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>("naming", RemoteClientTransport::construct);
+    static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>(ProtocolUtils.NAMING, RemoteClientTransport::construct);
 
     private static final byte[] initialBytes = {
         'n', 'a', 'm', 'i', 'n', 'g'
@@ -101,9 +104,9 @@ final class RemoteClientTransport {
             public void handleMessage(final Channel channel, final MessageInputStream message) {
                 // this should be the greeting message, get the version list and start from there
                 try (MessageInputStream mis = message) {
-                    final byte[] namingHeader = new byte[initialBytes.length];
+                    final byte[] namingHeader = new byte[ProtocolUtils.NAMING_BYTES.length];
                     mis.read(namingHeader);
-                    if (! Arrays.equals(namingHeader, initialBytes)) {
+                    if (! Arrays.equals(namingHeader, ProtocolUtils.NAMING_BYTES)) {
                         futureResult.setException(new IOException(Messages.log.invalidHeader()));
                         return;
                     }
@@ -130,7 +133,7 @@ final class RemoteClientTransport {
                     configuration.setVersion(version == 2 ? 4 : 2);
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
                     try (MessageOutputStream os = remoteClientTransport.tracker.allocateMessage()) {
-                        os.write(initialBytes);
+                        os.write(ProtocolUtils.NAMING_BYTES);
                         os.writeByte(version);
                     }
                     remoteClientTransport.start();
@@ -166,7 +169,7 @@ final class RemoteClientTransport {
             public void handleMessage(final Channel channel, final MessageInputStream message) {
                 try {
                     final int messageId = message.readUnsignedByte();
-                    final int id = readId(message);
+                    final int id = readId(message, version);
                     final int result = message.readUnsignedByte();
                     if (result == Protocol.SUCCESS || result == Protocol.FAILURE) {
                         tracker.signalResponse(id, messageId, message, true);
@@ -182,18 +185,6 @@ final class RemoteClientTransport {
         });
     }
 
-    int readId(final MessageInputStream stream) throws IOException {
-        return version == 1 ? stream.readInt() : stream.readUnsignedShort();
-    }
-
-    void writeId(final MessageOutputStream stream, final int id) throws IOException {
-        if (version == 1) {
-            stream.writeInt(id);
-        } else {
-            stream.writeShort(id);
-        }
-    }
-
     Object lookup(final RemoteContext context, final Name name, final ConnectionPeerIdentity peerIdentity, final boolean preserveLinks) throws NamingException {
         final int authId = peerIdentity.getId();
         final int version = this.version;
@@ -205,9 +196,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // lookup
                 messageOutputStream.writeByte(preserveLinks ? Protocol.CMD_LOOKUP_LINK : Protocol.CMD_LOOKUP);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
@@ -222,11 +213,11 @@ final class RemoteClientTransport {
                 if (parameterType == Protocol.P_CONTEXT) {
                     return new RelativeFederatingContext(new FastHashtable<>(context.getEnvironment()), context, NamingUtils.toCompositeName(name));
                 } else if (parameterType == Protocol.P_OBJECT) {
-                    try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
                         return unmarshaller.readObject();
                     }
                 } else if (parameterType == Protocol.P_EXCEPTION) {
-                    try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
                         final Exception exception = unmarshaller.readObject(Exception.class);
                         if (exception instanceof NamingException) {
                             throw (NamingException) exception;
@@ -258,9 +249,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(rebind ? Protocol.CMD_REBIND : Protocol.CMD_BIND);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                         marshaller.writeByte(Protocol.P_OBJECT);
@@ -269,7 +260,7 @@ final class RemoteClientTransport {
                 } else {
                     messageOutputStream.writeInt(authId);
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeObject(obj);
                     }
                 }
@@ -296,9 +287,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(Protocol.CMD_UNBIND);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
@@ -328,9 +319,9 @@ final class RemoteClientTransport {
         try {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 messageOutputStream.writeByte(Protocol.CMD_RENAME);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(oldName));
                         marshaller.writeByte(Protocol.P_NAME);
@@ -364,9 +355,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(Protocol.CMD_DESTROY_SUBCTX);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
@@ -397,9 +388,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(Protocol.CMD_CREATE_SUBCTX);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(compositeName);
                     }
@@ -431,9 +422,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(Protocol.CMD_LIST);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
@@ -450,7 +441,7 @@ final class RemoteClientTransport {
                     }
                     final int listSize = is.readInt();
                     final List<NameClassPair> results = new ArrayList<>(listSize);
-                    try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
                         for (int i = 0; i < listSize; i++) {
                             results.add(unmarshaller.readObject(NameClassPair.class));
                         }
@@ -492,9 +483,9 @@ final class RemoteClientTransport {
             try (MessageOutputStream messageOutputStream = tracker.allocateMessage(invocation)) {
                 // bind
                 messageOutputStream.writeByte(Protocol.CMD_LIST_BINDINGS);
-                writeId(messageOutputStream, invocation.getIndex());
+                writeId(messageOutputStream, version, invocation.getIndex());
                 if (version == 1) {
-                    try (Marshaller marshaller = createMarshaller(messageOutputStream)) {
+                    try (Marshaller marshaller = createMarshaller(messageOutputStream, configuration)) {
                         marshaller.writeByte(Protocol.P_NAME);
                         marshaller.writeObject(NamingUtils.toDecomposedCompositeName(name));
                     }
@@ -510,7 +501,7 @@ final class RemoteClientTransport {
                 }
                 final int listSize = is.readInt();
                 final List<Binding> results = new ArrayList<>(listSize);
-                try (Unmarshaller unmarshaller = createUnmarshaller(is)) {
+                try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
                     for (int i = 0; i < listSize; i++) {
                         final int b = unmarshaller.readUnsignedByte();
                         if (b == Protocol.P_CONTEXT) {
@@ -535,17 +526,5 @@ final class RemoteClientTransport {
             Thread.currentThread().interrupt();
             throw Messages.log.operationInterrupted();
         }
-    }
-
-    private Unmarshaller createUnmarshaller(MessageInputStream is) throws IOException {
-        final Unmarshaller unmarshaller = Marshalling.getProvidedMarshallerFactory("river").createUnmarshaller(configuration);
-        unmarshaller.start(Marshalling.createByteInput(is));
-        return unmarshaller;
-    }
-
-    private Marshaller createMarshaller(MessageOutputStream os) throws IOException {
-        final Marshaller marshaller = Marshalling.getProvidedMarshallerFactory("river").createMarshaller(configuration);
-        marshaller.start(Marshalling.createByteOutput(os));
-        return marshaller;
     }
 }
