@@ -123,7 +123,12 @@ public final class RemoteNamingProvider implements NamingProvider {
      * @throws IOException if connecting the peer failed
      */
     public ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException {
-        return connectionFactory.get().get().getPeerIdentityContext().authenticate(authenticationConfiguration);
+        final Connection connection = connectionFactory.get().get();
+        if (connection.supportsRemoteAuth()) {
+            return connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
+        } else {
+            return connection.getConnectionPeerIdentity();
+        }
     }
 
     /**
@@ -146,7 +151,11 @@ public final class RemoteNamingProvider implements NamingProvider {
 
             public void handleDone(final Connection data, final FutureResult<ConnectionPeerIdentity> attachment) {
                 try {
-                    attachment.setResult(data.getPeerIdentityContext().authenticate(authenticationConfiguration));
+                    if (data.supportsRemoteAuth()) {
+                        attachment.setResult(data.getPeerIdentityContext().authenticate(authenticationConfiguration));
+                    } else {
+                        attachment.setResult(data.getConnectionPeerIdentity());
+                    }
                 } catch (AuthenticationException e) {
                     attachment.setException(new javax.security.sasl.AuthenticationException(e.getMessage(), e));
                 }
