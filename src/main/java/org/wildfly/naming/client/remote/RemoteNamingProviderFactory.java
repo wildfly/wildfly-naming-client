@@ -22,6 +22,7 @@
 
 package org.wildfly.naming.client.remote;
 
+import static org.jboss.naming.remote.client.InitialContextFactory.CONNECTION;
 import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
 
 import java.io.IOException;
@@ -91,6 +92,11 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             } catch (IOException e) {
                 throw Messages.log.connectFailed(e);
             }
+            final RemoteNamingProvider provider = new RemoteNamingProvider(connection, context, env);
+            connection.getAttachments().attach(PROVIDER_KEY, provider);
+            return provider;
+        } else if (env.containsKey(CONNECTION)) {
+            final Connection connection = (Connection) env.get(CONNECTION);
             final RemoteNamingProvider provider = new RemoteNamingProvider(connection, context, env);
             connection.getAttachments().attach(PROVIDER_KEY, provider);
             return provider;
