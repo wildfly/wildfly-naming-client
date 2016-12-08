@@ -22,6 +22,8 @@
 
 package org.wildfly.naming.client.remote;
 
+import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.ConcurrentHashMap;
@@ -66,14 +68,13 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     private static final Attachments.Key<ProviderMap> PROVIDER_MAP_KEY = new Attachments.Key<>(ProviderMap.class);
 
-    public boolean supportsUriScheme(final String providerScheme) {
-        final Endpoint endpoint = Endpoint.getCurrent();
+    public boolean supportsUriScheme(final String providerScheme, final FastHashtable<String, Object> env) {
+        final Endpoint endpoint = getEndpoint(env);
         return endpoint != null && endpoint.isValidUriScheme(providerScheme);
     }
 
     public NamingProvider createProvider(final URI providerUri, final FastHashtable<String, Object> env) throws NamingException {
-        // capture endpoint
-        final Endpoint endpoint = Endpoint.getCurrent();
+        final Endpoint endpoint = getEndpoint(env);
         boolean useSeparateConnection = Boolean.parseBoolean(String.valueOf(env.get(USE_SEPARATE_CONNECTION)));
         AuthenticationContext context;
         if (false) {
@@ -112,6 +113,10 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             }
             return provider;
         }
+    }
+
+    private Endpoint getEndpoint(final FastHashtable<String, Object> env) {
+        return env.containsKey(ENDPOINT) ? (Endpoint) env.get(ENDPOINT) : Endpoint.getCurrent();
     }
 
     static final class URIKey {

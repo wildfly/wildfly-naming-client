@@ -39,9 +39,10 @@ public interface NamingProviderFactory {
      * Determine if this provider supports the given {@code PROVIDER_URL} scheme.
      *
      * @param providerScheme the provider URL scheme, or {@code null} if no provider URL was given
+     * @param env a copy of the environment which may be used to determine if this provider supports the given scheme
      * @return {@code true} if this provider supports the given schemes, {@code false} otherwise
      */
-    boolean supportsUriScheme(String providerScheme);
+    boolean supportsUriScheme(String providerScheme, FastHashtable<String, Object> env);
 
     /**
      * Create the naming provider instance for a provider URI.
