@@ -22,14 +22,21 @@
 
 package org.wildfly.naming.client.remote;
 
+import static java.security.AccessController.doPrivileged;
+import static org.jboss.naming.remote.client.InitialContextFactory.CALLBACK_HANDLER_KEY;
 import static org.jboss.naming.remote.client.InitialContextFactory.CONNECTION;
 import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
+import static org.jboss.naming.remote.client.InitialContextFactory.PASSWORD_BASE64_KEY;
+import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.PrivilegedAction;
 import java.util.concurrent.ConcurrentHashMap;
 
+import javax.naming.Context;
 import javax.naming.NamingException;
+import javax.security.auth.callback.CallbackHandler;
 
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Connection;
@@ -39,7 +46,11 @@ import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.NamingProviderFactory;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.util.CodePointIterator;
 import org.xnio.IoFuture;
 import org.xnio.OptionMap;
 
@@ -69,21 +80,51 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     private static final Attachments.Key<ProviderMap> PROVIDER_MAP_KEY = new Attachments.Key<>(ProviderMap.class);
 
+    private static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
+
     public boolean supportsUriScheme(final String providerScheme, final FastHashtable<String, Object> env) {
         final Endpoint endpoint = getEndpoint(env);
         return endpoint != null && endpoint.isValidUriScheme(providerScheme);
     }
 
     public NamingProvider createProvider(final URI providerUri, final FastHashtable<String, Object> env) throws NamingException {
+        // Legacy naming constants
         final Endpoint endpoint = getEndpoint(env);
+        final String callbackClass = getStringProperty(CALLBACK_HANDLER_KEY, env);
+        final String userName = getStringProperty(Context.SECURITY_PRINCIPAL, env);
+        final String password = getStringProperty(Context.SECURITY_CREDENTIALS, env);
+        final String passwordBase64 = getStringProperty(PASSWORD_BASE64_KEY, env);
+        final String realm = getStringProperty(REALM_KEY, env);
+
         boolean useSeparateConnection = Boolean.parseBoolean(String.valueOf(env.get(USE_SEPARATE_CONNECTION)));
-        AuthenticationContext context;
-        if (false) {
-            context = AuthenticationContext.empty();
-            env.get("blah");
-        } else {
-            context = AuthenticationContext.captureCurrent();
+
+        AuthenticationContext captured = AuthenticationContext.captureCurrent();
+        AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(providerUri, captured);
+        if (callbackClass != null && (userName != null || password != null)) {
+            throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
         }
+        if (callbackClass != null) {
+            final ClassLoader classLoader = secureGetContextClassLoader();
+            try {
+                final Class<?> clazz = Class.forName(callbackClass, true, classLoader);
+                final CallbackHandler callbackHandler = (CallbackHandler) clazz.newInstance();
+                if (callbackHandler != null) {
+                    mergedConfiguration = mergedConfiguration.useCallbackHandler(callbackHandler);
+                }
+            } catch (ClassNotFoundException e) {
+                throw Messages.log.failedToLoadCallbackHandlerClass(e, callbackClass);
+            } catch (Exception e) {
+                throw Messages.log.failedToInstantiateCallbackHandlerInstance(e, callbackClass);
+            }
+        } else if (userName != null) {
+            if (password != null && passwordBase64 != null) {
+                throw Messages.log.plainTextAndBase64PasswordSpecified();
+            }
+            final String decodedPassword = passwordBase64 != null ? CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString() : password;
+            mergedConfiguration = mergedConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
+        }
+        final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
+
         if (useSeparateConnection) {
             // create a brand new connection - if there is authentication info in the env, use it
             final Connection connection;
@@ -123,6 +164,26 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     private Endpoint getEndpoint(final FastHashtable<String, Object> env) {
         return env.containsKey(ENDPOINT) ? (Endpoint) env.get(ENDPOINT) : Endpoint.getCurrent();
+    }
+
+    private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
+        final Object propertyValue = env.get(propertyName);
+        return propertyValue == null ? null : (String) propertyValue;
+    }
+
+    private static ClassLoader secureGetContextClassLoader() {
+        final ClassLoader contextClassLoader;
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            contextClassLoader = doPrivileged((PrivilegedAction<ClassLoader>) RemoteNamingProviderFactory::getContextClassLoader);
+        } else {
+            contextClassLoader = getContextClassLoader();
+        }
+        return contextClassLoader;
+    }
+
+    private static ClassLoader getContextClassLoader() {
+        return Thread.currentThread().getContextClassLoader();
     }
 
     static final class URIKey {
