@@ -315,7 +315,7 @@ public final class WildFlyRootContext implements Context {
             for (;;) try {
                 if (! providerIterator.hasNext()) break;
                 final NamingProviderFactory providerFactory = providerIterator.next();
-                if (providerFactory.supportsUriScheme(providerScheme)) {
+                if (providerFactory.supportsUriScheme(providerScheme, getEnvironment())) {
                     final NamingProvider provider = providerFactory.createProvider(providerUri, getEnvironment());
                     final Iterator<NamingContextFactory> contextIterator = contextLoader.iterator();
                     for (;;) try {
