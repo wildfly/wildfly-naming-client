@@ -61,6 +61,7 @@ public final class WildFlyRootContext implements Context {
 
     private final FastHashtable<String, Object> environment;
 
+    private final Object loaderLock = new Object();
     private final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader;
     private final ServiceLoader<NamingContextFactory> namingContextServiceLoader;
 
@@ -304,12 +305,25 @@ public final class WildFlyRootContext implements Context {
         }
         final String providerScheme = providerUri == null ? null : providerUri.getScheme();
         // check for empty
-        if ((nameScheme == null || nameScheme.isEmpty()) && (providerScheme == null || providerScheme.isEmpty())) {
+        if (providerScheme == null || providerScheme.isEmpty()) {
+            // search for context factories which support a null provider
+            synchronized (loaderLock) {
+                final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
+                for (;;) try {
+                    if (! contextIterator.hasNext()) break;
+                    final NamingContextFactory contextFactory = contextIterator.next();
+                    if (contextFactory.supportsUriScheme(null, nameScheme)) {
+                        return contextFactory.createRootContext(null, nameScheme, getEnvironment());
+                    }
+                } catch (ServiceConfigurationError error) {
+                    Messages.log.serviceConfigFailed(error);
+                }
+            }
+            // by default, support an empty local root context
             return NamingUtils.emptyContext(getEnvironment());
         }
         // get active naming providers
         final ServiceLoader<NamingProviderFactory> providerLoader = this.namingProviderServiceLoader;
-        final ServiceLoader<NamingContextFactory> contextLoader = this.namingContextServiceLoader;
         synchronized (providerLoader) {
             final Iterator<NamingProviderFactory> providerIterator = providerLoader.iterator();
             for (;;) try {
@@ -317,7 +331,7 @@ public final class WildFlyRootContext implements Context {
                 final NamingProviderFactory providerFactory = providerIterator.next();
                 if (providerFactory.supportsUriScheme(providerScheme, getEnvironment())) {
                     final NamingProvider provider = providerFactory.createProvider(providerUri, getEnvironment());
-                    final Iterator<NamingContextFactory> contextIterator = contextLoader.iterator();
+                    final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
                     for (;;) try {
                         if (! contextIterator.hasNext()) break;
                         final NamingContextFactory contextFactory = contextIterator.next();
@@ -351,10 +365,10 @@ public final class WildFlyRootContext implements Context {
             if(segment.length()>0 || (origName.size()>1 && origName.get(1).length()>0)){
                 name.add(0, segment);
             }
+            return new ReparsedName(urlScheme.isEmpty() ? null : urlScheme, name);
         } else {
-            urlScheme = null;
+            return new ReparsedName(null, name);
         }
-        return new ReparsedName(urlScheme, name);
     }
 
     class ReparsedName {
