@@ -40,7 +40,7 @@ public interface NamingContextFactory {
      * A context factory should evaluate the provider's type to determine if the provider is compatible with the naming
      * scheme, and should not support producing contexts for unknown providers.
      *
-     * @param namingProvider the naming provider which is handling this request (not {@code null})
+     * @param namingProvider the naming provider which is handling this request, or {@code null} if it is local
      * @param nameScheme the JNDI name scheme, or {@code null} if no name scheme was given
      * @return {@code true} if this factory supports the given scheme, {@code false} otherwise
      */
@@ -50,7 +50,7 @@ public interface NamingContextFactory {
      * Create the root context for this naming scheme.  The context should capture any locally relevant information,
      * such as the relevant local security or authentication context.
      *
-     * @param namingProvider the naming provider which is handling this request (not {@code null})
+     * @param namingProvider the naming provider which is handling this request, or {@code null} if it is local
      * @param nameScheme the scheme in the name, or {@code null} if there is no name URL scheme
      * @param env a copy of the environment which may be consumed directly by the provider (not {@code null})
      * @return the root context (must not be {@code null})
