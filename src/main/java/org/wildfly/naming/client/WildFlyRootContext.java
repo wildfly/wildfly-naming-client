@@ -40,6 +40,7 @@ import javax.naming.NameClassPair;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
+import javax.naming.spi.NamingManager;
 
 import org.wildfly.common.Assert;
 import org.wildfly.naming.client._private.Messages;
@@ -319,6 +320,13 @@ public final class WildFlyRootContext implements Context {
                     Messages.log.serviceConfigFailed(error);
                 }
             }
+            if (nameScheme != null) {
+                // there is a name scheme to resolve; try the old-fashioned way
+                final Context context = NamingManager.getURLContext(nameScheme, environment);
+                if (context != null) {
+                    return context;
+                }
+            }
             // by default, support an empty local root context
             return NamingUtils.emptyContext(getEnvironment());
         }
@@ -344,6 +352,13 @@ public final class WildFlyRootContext implements Context {
                 }
             } catch (ServiceConfigurationError error) {
                 Messages.log.serviceConfigFailed(error);
+            }
+            if (nameScheme != null) {
+                // there is a name scheme to resolve; try the old-fashioned way
+                final Context context = NamingManager.getURLContext(nameScheme, environment);
+                if (context != null) {
+                    return context;
+                }
             }
             throw Messages.log.noProviderForUri(nameScheme);
         }
