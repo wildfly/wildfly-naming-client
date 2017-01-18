@@ -29,6 +29,7 @@ import javax.naming.Context;
 import javax.naming.NamingException;
 import javax.naming.spi.InitialContextFactory;
 
+import org.kohsuke.MetaInfServices;
 import org.wildfly.naming.client.util.FastHashtable;
 
 /**
@@ -36,6 +37,7 @@ import org.wildfly.naming.client.util.FastHashtable;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
+@MetaInfServices
 public final class WildFlyInitialContextFactory implements InitialContextFactory {
 
     /**
