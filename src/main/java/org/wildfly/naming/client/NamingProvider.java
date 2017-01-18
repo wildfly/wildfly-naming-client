@@ -23,9 +23,11 @@
 package org.wildfly.naming.client;
 
 import java.net.URI;
+import java.util.function.BiFunction;
 
 import javax.naming.NamingException;
 
+import org.wildfly.common.function.ExceptionBiFunction;
 import org.wildfly.security.auth.client.PeerIdentity;
 
 /**
@@ -48,6 +50,57 @@ public interface NamingProvider extends AutoCloseable {
      * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
      */
     PeerIdentity getPeerIdentityForNaming() throws NamingException;
+
+    /**
+     * Get the current naming provider being used for the current deserialization operation.
+     *
+     * @return the current naming provider, or {@code null} if no provider-related deserialization is occurring
+     */
+    static NamingProvider getCurrentNamingProvider() {
+        return CurrentNamingProvider.getCurrent();
+    }
+
+    /**
+     * Perform an action under the current naming provider.
+     *
+     * @param function the function to apply (must not be {@code null})
+     * @param arg1 the first argument
+     * @param arg2 the second argument
+     * @param <T> the first argument type
+     * @param <U> the second argument type
+     * @param <R> the function return type
+     * @return the function return value
+     */
+    default <T, U, R> R performAction(BiFunction<T, U, R> function, T arg1, U arg2) {
+        final NamingProvider old = CurrentNamingProvider.getAndSetCurrent(this);
+        try {
+            return function.apply(arg1, arg2);
+        } finally {
+            CurrentNamingProvider.setCurrent(old);
+        }
+    }
+
+    /**
+     * Perform an action under the current naming provider.
+     *
+     * @param function the function to apply (must not be {@code null})
+     * @param arg1 the first argument
+     * @param arg2 the second argument
+     * @param <T> the first argument type
+     * @param <U> the second argument type
+     * @param <R> the function return type
+     * @param <E> the function exception type
+     * @return the function return value
+     * @throws E if the function throws an exception of the given type
+     */
+    default <T, U, R, E extends Exception> R performExceptionAction(ExceptionBiFunction<T, U, R, E> function, T arg1, U arg2) throws E {
+        final NamingProvider old = CurrentNamingProvider.getAndSetCurrent(this);
+        try {
+            return function.apply(arg1, arg2);
+        } finally {
+            CurrentNamingProvider.setCurrent(old);
+        }
+    }
 
     /**
      * Close the provider.  This method is called when the corresponding {@code InitialContext} is closed.  This method

@@ -88,58 +88,83 @@ final class RemoteContext extends AbstractFederatingContext {
         if (name.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        return getRemoteTransport(peerIdentity).lookup(this, name, peerIdentity, false);
+        return provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            return getRemoteTransport(peerIdentity).lookup(this, name_, peerIdentity, false);
+        }, name, null);
     }
 
     protected Object lookupLinkNative(final Name name) throws NamingException {
         if (name.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        return getRemoteTransport(peerIdentity).lookup(this, name, peerIdentity, true);
+        return provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            return getRemoteTransport(peerIdentity).lookup(this, name_, peerIdentity, true);
+        }, name, null);
     }
 
     protected void bindNative(final Name name, final Object obj) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        getRemoteTransport(peerIdentity).bind(name, obj, peerIdentity, false);
+        provider.performExceptionAction((name_, obj_) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            getRemoteTransport(peerIdentity).bind(name_, obj_, peerIdentity, false);
+            return null;
+        }, name, obj);
     }
 
     protected void rebindNative(final Name name, final Object obj) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        getRemoteTransport(peerIdentity).bind(name, obj, peerIdentity, true);
+        provider.performExceptionAction((name_, obj_) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            getRemoteTransport(peerIdentity).bind(name_, obj_, peerIdentity, true);
+            return null;
+        }, name, obj);
     }
 
     protected void unbindNative(final Name name) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        getRemoteTransport(peerIdentity).unbind(name, peerIdentity);
+        provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            getRemoteTransport(peerIdentity).unbind(name_, peerIdentity);
+            return null;
+        }, name, null);
     }
 
     protected void renameNative(final Name oldName, final Name newName) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        getRemoteTransport(peerIdentity).rename(oldName, newName, peerIdentity);
+        provider.performExceptionAction((oldName_, newName_) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            getRemoteTransport(peerIdentity).rename(oldName_, newName_, peerIdentity);
+            return null;
+        }, oldName, newName);
     }
 
     protected CloseableNamingEnumeration<NameClassPair> listNative(final Name name) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        return getRemoteTransport(peerIdentity).list(name, peerIdentity);
+        return provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            return getRemoteTransport(peerIdentity).list(name_, peerIdentity);
+        }, name, null);
     }
 
     protected CloseableNamingEnumeration<Binding> listBindingsNative(final Name name) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        return getRemoteTransport(peerIdentity).listBindings(name, this, peerIdentity);
+        return provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            return getRemoteTransport(peerIdentity).listBindings(name_, this, peerIdentity);
+        }, name, null);
     }
 
     protected void destroySubcontextNative(final Name name) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        getRemoteTransport(peerIdentity).destroySubcontext(name, peerIdentity);
+        provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            getRemoteTransport(peerIdentity).destroySubcontext(name_, peerIdentity);
+            return null;
+        }, name, null);
     }
 
     protected Context createSubcontextNative(final Name name) throws NamingException {
-        final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
-        final CompositeName compositeName = NamingUtils.toCompositeName(name);
-        getRemoteTransport(peerIdentity).createSubcontext(compositeName, peerIdentity);
-        return new RelativeFederatingContext(getEnvironment(), this, compositeName);
+        return provider.performExceptionAction((name_, ignored) -> {
+            final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
+            final CompositeName compositeName = NamingUtils.toCompositeName(name_);
+            getRemoteTransport(peerIdentity).createSubcontext(compositeName, peerIdentity);
+            return new RelativeFederatingContext(getEnvironment(), this, compositeName);
+        }, name, null);
     }
 
     public void close() {
