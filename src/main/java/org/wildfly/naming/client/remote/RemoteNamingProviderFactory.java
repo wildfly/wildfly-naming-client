@@ -32,6 +32,8 @@ import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
 import java.io.IOException;
 import java.net.URI;
 import java.security.PrivilegedAction;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.naming.Context;
@@ -42,6 +44,7 @@ import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
 import org.kohsuke.MetaInfServices;
+import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.NamingProviderFactory;
 import org.wildfly.naming.client._private.Messages;
@@ -88,15 +91,18 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
     }
 
     public NamingProvider createProvider(final URI providerUri, final FastHashtable<String, Object> env) throws NamingException {
+        final ClassLoader classLoader = secureGetContextClassLoader();
+        final Properties properties = getPropertiesFromEnv(env);
+
         // Legacy naming constants
         final Endpoint endpoint = getEndpoint(env);
-        final String callbackClass = getStringProperty(CALLBACK_HANDLER_KEY, env);
-        final String userName = getStringProperty(Context.SECURITY_PRINCIPAL, env);
-        final String password = getStringProperty(Context.SECURITY_CREDENTIALS, env);
-        final String passwordBase64 = getStringProperty(PASSWORD_BASE64_KEY, env);
-        final String realm = getStringProperty(REALM_KEY, env);
+        final String callbackClass = getProperty(properties, CALLBACK_HANDLER_KEY, null, true);
+        final String userName = getProperty(properties, Context.SECURITY_PRINCIPAL, null, true);
+        final String password = getProperty(properties, Context.SECURITY_CREDENTIALS, null, false);
+        final String passwordBase64 = getProperty(properties, PASSWORD_BASE64_KEY, null, false);
+        final String realm = getProperty(properties, REALM_KEY, null, true);
 
-        boolean useSeparateConnection = Boolean.parseBoolean(String.valueOf(env.get(USE_SEPARATE_CONNECTION)));
+        boolean useSeparateConnection = getBooleanValueFromProperties(properties, USE_SEPARATE_CONNECTION, false);
 
         AuthenticationContext captured = AuthenticationContext.captureCurrent();
         AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(providerUri, captured);
@@ -104,7 +110,6 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
         }
         if (callbackClass != null) {
-            final ClassLoader classLoader = secureGetContextClassLoader();
             try {
                 final Class<?> clazz = Class.forName(callbackClass, true, classLoader);
                 final CallbackHandler callbackHandler = (CallbackHandler) clazz.newInstance();
@@ -123,6 +128,7 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             final String decodedPassword = passwordBase64 != null ? CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString() : password;
             mergedConfiguration = mergedConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
         }
+
         final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
 
         if (useSeparateConnection) {
@@ -166,9 +172,35 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         return env.containsKey(ENDPOINT) ? (Endpoint) env.get(ENDPOINT) : Endpoint.getCurrent();
     }
 
-    private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
-        final Object propertyValue = env.get(propertyName);
-        return propertyValue == null ? null : (String) propertyValue;
+    private static Properties getPropertiesFromEnv(final FastHashtable<String, Object> env) {
+        Properties properties = new Properties();
+        for (Map.Entry<String, Object> entry : env.entrySet()) {
+            if (entry.getValue() instanceof String) {
+                properties.setProperty(entry.getKey(), (String) entry.getValue());
+            }
+        }
+        return properties;
+    }
+
+    private static String getProperty(final Properties properties, final String propertyName, final String defaultValue, final boolean expand) {
+        final String str = properties.getProperty(propertyName);
+        if (str == null) {
+            return defaultValue;
+        }
+        if (expand) {
+            final Expression expression = Expression.compile(str, Expression.Flag.LENIENT_SYNTAX);
+            return expression.evaluateWithPropertiesAndEnvironment(false);
+        } else {
+            return str.trim();
+        }
+    }
+
+    private static boolean getBooleanValueFromProperties(final Properties properties, final String propertyName, final boolean defVal) {
+        final String str = getProperty(properties, propertyName, null, true);
+        if (str == null) {
+            return defVal;
+        }
+        return Boolean.parseBoolean(str);
     }
 
     private static ClassLoader secureGetContextClassLoader() {
