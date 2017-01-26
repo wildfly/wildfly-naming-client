@@ -55,7 +55,10 @@ import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient
 import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.util.CodePointIterator;
 import org.xnio.IoFuture;
+import org.xnio.Option;
 import org.xnio.OptionMap;
+import org.xnio.Options;
+import org.xnio.sasl.SaslUtils;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -79,6 +82,10 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
      */
     public static final String USE_SEPARATE_CONNECTION = "org.wildfly.naming.client.remote.use-separate-connection";
 
+    private static final String CONNECT_OPTIONS_PREFIX = "jboss.naming.client.connect.options.";
+    private static final OptionMap DEFAULT_CONNECTION_CREATION_OPTIONS = OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, false);
+    private static final String[] NO_STRINGS = new String[0];
+
     static final Attachments.Key<RemoteNamingProvider> PROVIDER_KEY = new Attachments.Key<>(RemoteNamingProvider.class);
 
     private static final Attachments.Key<ProviderMap> PROVIDER_MAP_KEY = new Attachments.Key<>(ProviderMap.class);
@@ -101,6 +108,8 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         final String password = getProperty(properties, Context.SECURITY_CREDENTIALS, null, false);
         final String passwordBase64 = getProperty(properties, PASSWORD_BASE64_KEY, null, false);
         final String realm = getProperty(properties, REALM_KEY, null, true);
+        final OptionMap configuredConnectOptions = getOptionMapFromProperties(properties, CONNECT_OPTIONS_PREFIX, classLoader);
+        final OptionMap connectOptions = mergeWithDefaultOptionMap(DEFAULT_CONNECTION_CREATION_OPTIONS, configuredConnectOptions);
 
         boolean useSeparateConnection = getBooleanValueFromProperties(properties, USE_SEPARATE_CONNECTION, false);
 
@@ -129,13 +138,23 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             mergedConfiguration = mergedConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
         }
 
+        // connect options
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        final Map<String, String> saslProperties = (Map) SaslUtils.createPropertyMap(connectOptions, false);
+        mergedConfiguration = mergedConfiguration.useMechanismProperties(saslProperties);
+        if (connectOptions.contains(Options.SASL_DISALLOWED_MECHANISMS)) {
+            mergedConfiguration = mergedConfiguration.forbidSaslMechanisms(connectOptions.get(Options.SASL_DISALLOWED_MECHANISMS).toArray(NO_STRINGS));
+        } else if (connectOptions.contains(Options.SASL_MECHANISMS)) {
+            mergedConfiguration = mergedConfiguration.allowSaslMechanisms(connectOptions.get(Options.SASL_MECHANISMS).toArray(NO_STRINGS));
+        }
+
         final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
 
         if (useSeparateConnection) {
             // create a brand new connection - if there is authentication info in the env, use it
             final Connection connection;
             try {
-                connection = endpoint.connect(providerUri, OptionMap.EMPTY, context).get();
+                connection = endpoint.connect(providerUri, connectOptions, context).get();
             } catch (IOException e) {
                 throw Messages.log.connectFailed(e);
             }
@@ -201,6 +220,24 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             return defVal;
         }
         return Boolean.parseBoolean(str);
+    }
+
+    private static OptionMap getOptionMapFromProperties(final Properties properties, final String propertyPrefix, final ClassLoader classLoader) {
+        return OptionMap.builder().parseAll(properties, propertyPrefix, classLoader).getMap();
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static OptionMap mergeWithDefaultOptionMap(final OptionMap defaultOptions, final OptionMap configuredOptions) {
+        final OptionMap.Builder mergedOptionMapBuilder = OptionMap.builder().addAll(configuredOptions);
+        for (Option defaultOption : defaultOptions) {
+            if (mergedOptionMapBuilder.getMap().contains(defaultOption)) {
+                // skip this option since it's already been configured
+                continue;
+            }
+            // add this default option to the merged option map
+            mergedOptionMapBuilder.set(defaultOption, defaultOptions.get(defaultOption));
+        }
+        return mergedOptionMapBuilder.getMap();
     }
 
     private static ClassLoader secureGetContextClassLoader() {
