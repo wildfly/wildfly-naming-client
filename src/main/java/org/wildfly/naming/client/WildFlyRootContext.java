@@ -23,6 +23,12 @@
 package org.wildfly.naming.client;
 
 import static java.security.AccessController.doPrivileged;
+import static org.wildfly.naming.client.util.EnvironmentUtils.CONNECT_OPTIONS;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_HOST_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_PORT_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTIONS;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PREFIX;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PROVIDER_PREFIX;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -46,6 +52,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
+import org.xnio.Options;
 
 /**
  * A root context which locates providers based on the {@link Context#PROVIDER_URL} environment property as well as any
@@ -297,7 +304,7 @@ public final class WildFlyRootContext implements Context {
 
     private Context getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
-        final Object urlString = getEnvironment().get(PROVIDER_URL);
+        final Object urlString = getProviderUrl(getEnvironment());
         URI providerUri;
         try {
             providerUri = urlString == null ? null : new URI(urlString.toString());
@@ -362,6 +369,49 @@ public final class WildFlyRootContext implements Context {
             }
             throw Messages.log.noProviderForUri(nameScheme);
         }
+    }
+
+    /**
+     * Get the provider URL. If a provider URL has not been specified but properties for an EJB remote connection have
+     * been specified, attempt to determine the provider URL from the EJB remote connection host and port properties.
+     *
+     * @param env the environment (must not be {@code null})
+     * @return the provider URL, or {@code null} if there is none or if it cannot be determined from other properties
+     */
+    private Object getProviderUrl(final FastHashtable<String, Object> env) {
+        Object urlString= env.get(Context.PROVIDER_URL);
+        if (urlString != null) {
+            return urlString;
+        }
+        final String connectionName = (String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "");
+        if (connectionName.isEmpty() || connectionName.contains(",")) {
+            // either no EJB connection properties were specified or multiple EJB connections were specified,
+            // cannot directly convert to equivalent naming properties
+            return null;
+        }
+        // only one EJB connection was specified, attempt to determine the PROVIDER_URL from the EJB HOST and PORT properties
+        final String ejbPrefix = EJB_REMOTE_CONNECTION_PREFIX + connectionName + ".";
+        final String host = getStringProperty(ejbPrefix + EJB_HOST_KEY, env);
+        final String port = getStringProperty(ejbPrefix + EJB_PORT_KEY, env);
+        String sslEnabled = getStringProperty(ejbPrefix + CONNECT_OPTIONS + Options.SSL_ENABLED, env);
+        if (sslEnabled == null) {
+            sslEnabled = getStringProperty(EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, env);
+        }
+        final String protocol;
+        if (Boolean.parseBoolean(sslEnabled)) {
+            protocol = "remote+https";
+        } else {
+            protocol = "remote+http";
+        }
+        if ((host != null) && (port != null)) {
+            urlString = protocol + "://" + host + ":" + port;
+        }
+        return urlString;
+    }
+
+    private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
+        final Object propertyValue = env.get(propertyName);
+        return propertyValue == null ? null : (String) propertyValue;
     }
 
     ReparsedName reparse(final Name origName) throws InvalidNameException {

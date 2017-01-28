@@ -28,6 +28,12 @@ import static org.jboss.naming.remote.client.InitialContextFactory.CONNECTION;
 import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
 import static org.jboss.naming.remote.client.InitialContextFactory.PASSWORD_BASE64_KEY;
 import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.CONNECT_OPTIONS;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_CALLBACK_HANDLER_CLASS_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_PASSWORD_BASE64_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_PASSWORD_KEY;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PREFIX;
+import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_USERNAME_KEY;
 
 import java.io.IOException;
 import java.net.URI;
@@ -83,6 +89,7 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
     public static final String USE_SEPARATE_CONNECTION = "org.wildfly.naming.client.remote.use-separate-connection";
 
     private static final String CONNECT_OPTIONS_PREFIX = "jboss.naming.client.connect.options.";
+    private static final String NAMING_CLIENT_PREFIX = "jboss.naming.client.";
     private static final OptionMap DEFAULT_CONNECTION_CREATION_OPTIONS = OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, false);
     private static final String[] NO_STRINGS = new String[0];
 
@@ -195,7 +202,7 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         Properties properties = new Properties();
         for (Map.Entry<String, Object> entry : env.entrySet()) {
             if (entry.getValue() instanceof String) {
-                properties.setProperty(entry.getKey(), (String) entry.getValue());
+                properties.setProperty(processPropertyName(entry.getKey()), (String) entry.getValue());
             }
         }
         return properties;
@@ -224,6 +231,24 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     private static OptionMap getOptionMapFromProperties(final Properties properties, final String propertyPrefix, final ClassLoader classLoader) {
         return OptionMap.builder().parseAll(properties, propertyPrefix, classLoader).getMap();
+    }
+
+    private static String processPropertyName(String propertyName) {
+        // convert an EJB remote connection property name to an equivalent naming property name, where possible
+        if (propertyName.startsWith(EJB_REMOTE_CONNECTION_PREFIX)) {
+            if (propertyName.endsWith(EJB_CALLBACK_HANDLER_CLASS_KEY)) {
+                propertyName = CALLBACK_HANDLER_KEY;
+            } else if (propertyName.endsWith(EJB_USERNAME_KEY)) {
+                propertyName = Context.SECURITY_PRINCIPAL;
+            } else if (propertyName.endsWith(EJB_PASSWORD_KEY)) {
+                propertyName = Context.SECURITY_CREDENTIALS;
+            } else if (propertyName.endsWith(EJB_PASSWORD_BASE64_KEY)) {
+                propertyName = PASSWORD_BASE64_KEY;
+            } else if (propertyName.contains(CONNECT_OPTIONS)) {
+                propertyName = NAMING_CLIENT_PREFIX + propertyName.substring(propertyName.indexOf(CONNECT_OPTIONS));
+            }
+        }
+        return propertyName;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
