@@ -48,6 +48,18 @@ import org.wildfly.security.password.interfaces.ClearPassword;
  */
 public final class EnvironmentUtils {
 
+    // Constants related to EJB remote connections in environment properties
+    public static final String EJB_REMOTE_CONNECTIONS = "remote.connections";
+    public static final String EJB_REMOTE_CONNECTION_PREFIX = "remote.connection.";
+    public static final String EJB_REMOTE_CONNECTION_PROVIDER_PREFIX = "remote.connectionprovider.create.options.";
+    public static final String CONNECT_OPTIONS = "connect.options.";
+    public static final String EJB_HOST_KEY = "host";
+    public static final String EJB_PORT_KEY = "port";
+    public static final String EJB_CALLBACK_HANDLER_CLASS_KEY = "callback.handler.class";
+    public static final String EJB_USERNAME_KEY = "username";
+    public static final String EJB_PASSWORD_KEY = "password";
+    public static final String EJB_PASSWORD_BASE64_KEY = "password.base64";
+
     private EnvironmentUtils() {
     }
 
