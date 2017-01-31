@@ -22,12 +22,8 @@
 
 package org.wildfly.naming.client.remote;
 
-import static java.security.AccessController.doPrivileged;
-
 import java.io.IOException;
 import java.net.URI;
-import java.security.GeneralSecurityException;
-import java.security.PrivilegedAction;
 import java.util.function.Supplier;
 
 import javax.naming.NamingException;
@@ -42,10 +38,6 @@ import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.wildfly.security.auth.client.AuthenticationContext;
-import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
-import org.xnio.FailedIoFuture;
-import org.xnio.FinishedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 
@@ -56,7 +48,6 @@ import org.xnio.IoFuture;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class RemoteNamingProvider implements NamingProvider {
-    private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged((PrivilegedAction<AuthenticationContextConfigurationClient>) AuthenticationContextConfigurationClient::new);
 
     private final Endpoint endpoint;
     private final Supplier<IoFuture<Connection>> connectionFactory;
@@ -64,38 +55,13 @@ public final class RemoteNamingProvider implements NamingProvider {
     private final URI providerUri;
     private final AuthenticationConfiguration authenticationConfiguration;
 
-    RemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationContext context, final FastHashtable<String, Object> env) {
+    RemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration, final SSLContext sslContext, final FastHashtable<String, Object> env) {
         // shared connection
         this.endpoint = endpoint;
         this.providerUri = providerUri;
-        connectionFactory = () -> {
-            final AuthenticationConfiguration authenticationConfiguration = CLIENT.getAuthenticationConfiguration(providerUri, context);
-            final SSLContext sslContext;
-            try {
-                sslContext = CLIENT.getSSLContext(providerUri, context);
-            } catch (GeneralSecurityException e) {
-                return new FailedIoFuture<>(Messages.log.failedToConfigureSslContext(e));
-            }
-            return endpoint.getConnection(providerUri, sslContext, authenticationConfiguration);
-        };
+        connectionFactory = () -> endpoint.getConnection(providerUri, sslContext, connectionConfiguration, operateConfiguration);
         closeable = NamingCloseable.NULL;
-        authenticationConfiguration = CLIENT.getAuthenticationConfiguration(providerUri, context, -1, "jndi", "jboss", "operate");
-    }
-
-    RemoteNamingProvider(final Connection connection, final AuthenticationContext context, final FastHashtable<String, Object> env) {
-        // separate, direct-managed connection
-        this.endpoint = connection.getEndpoint();
-        final URI providerUri = connection.getPeerURI();
-        this.providerUri = providerUri;
-        authenticationConfiguration = CLIENT.getAuthenticationConfiguration(providerUri, context, -1, "jndi", "jboss", "operate");
-        connectionFactory = () -> new FinishedIoFuture<>(connection);
-        closeable = () -> {
-            try {
-                connection.close();
-            } catch (IOException e) {
-                throw Messages.log.namingProviderCloseFailed(e);
-            }
-        };
+        this.authenticationConfiguration = operateConfiguration;
     }
 
     /**

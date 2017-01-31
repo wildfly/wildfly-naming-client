@@ -210,5 +210,5 @@ public interface Messages extends BasicLogger {
     NamingException plainTextAndBase64PasswordSpecified();
 
     @Message(id = 46, value = "Failed to configure SSL context")
-    IOException failedToConfigureSslContext(@Cause Throwable cause);
+    CommunicationException failedToConfigureSslContext(@Cause Throwable cause);
 }

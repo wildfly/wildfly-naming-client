@@ -24,7 +24,6 @@ package org.wildfly.naming.client.remote;
 
 import static java.security.AccessController.doPrivileged;
 import static org.jboss.naming.remote.client.InitialContextFactory.CALLBACK_HANDLER_KEY;
-import static org.jboss.naming.remote.client.InitialContextFactory.CONNECTION;
 import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
 import static org.jboss.naming.remote.client.InitialContextFactory.PASSWORD_BASE64_KEY;
 import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
@@ -35,20 +34,20 @@ import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_PASSWORD_KEY;
 import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PREFIX;
 import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_USERNAME_KEY;
 
-import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.naming.Context;
 import javax.naming.NamingException;
+import javax.net.ssl.SSLContext;
 import javax.security.auth.callback.CallbackHandler;
 
 import org.jboss.remoting3.Attachments;
-import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.Endpoint;
+import org.jboss.remoting3.RemotingOptions;
 import org.kohsuke.MetaInfServices;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client.NamingProvider;
@@ -58,13 +57,10 @@ import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
-import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.util.CodePointIterator;
-import org.xnio.IoFuture;
 import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
-import org.xnio.sasl.SaslUtils;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -95,8 +91,6 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     static final Attachments.Key<RemoteNamingProvider> PROVIDER_KEY = new Attachments.Key<>(RemoteNamingProvider.class);
 
-    private static final Attachments.Key<ProviderMap> PROVIDER_MAP_KEY = new Attachments.Key<>(ProviderMap.class);
-
     private static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
     public boolean supportsUriScheme(final String providerScheme, final FastHashtable<String, Object> env) {
@@ -118,19 +112,35 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         final OptionMap configuredConnectOptions = getOptionMapFromProperties(properties, CONNECT_OPTIONS_PREFIX, classLoader);
         final OptionMap connectOptions = mergeWithDefaultOptionMap(DEFAULT_CONNECTION_CREATION_OPTIONS, configuredConnectOptions);
 
+        /*
+         * If this flag is set, then we'll use the "operate" credentials for both connection *and* operation.  If not,
+         * we won't touch the connect configuration at all; Remoting may use a shared or separate connection and we won't
+         * know the difference.
+         */
         boolean useSeparateConnection = getBooleanValueFromProperties(properties, USE_SEPARATE_CONNECTION, false);
 
         AuthenticationContext captured = AuthenticationContext.captureCurrent();
-        AuthenticationConfiguration mergedConfiguration = AUTH_CONFIGURATION_CLIENT.getAuthenticationConfiguration(providerUri, captured);
+
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+        AuthenticationConfiguration operateConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
         if (callbackClass != null && (userName != null || password != null)) {
             throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
         }
+        final SSLContext sslContext;
+        try {
+            sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss", "connect");
+        } catch (GeneralSecurityException e) {
+            throw Messages.log.failedToConfigureSslContext(e);
+        }
+
+        operateConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, operateConfiguration);
+
         if (callbackClass != null) {
             try {
                 final Class<?> clazz = Class.forName(callbackClass, true, classLoader);
                 final CallbackHandler callbackHandler = (CallbackHandler) clazz.newInstance();
                 if (callbackHandler != null) {
-                    mergedConfiguration = mergedConfiguration.useCallbackHandler(callbackHandler);
+                    operateConfiguration = operateConfiguration.useCallbackHandler(callbackHandler);
                 }
             } catch (ClassNotFoundException e) {
                 throw Messages.log.failedToLoadCallbackHandlerClass(e, callbackClass);
@@ -142,56 +152,11 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
                 throw Messages.log.plainTextAndBase64PasswordSpecified();
             }
             final String decodedPassword = passwordBase64 != null ? CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString() : password;
-            mergedConfiguration = mergedConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
+            operateConfiguration = operateConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
         }
 
-        // connect options
-        @SuppressWarnings({"unchecked", "rawtypes"})
-        final Map<String, String> saslProperties = (Map) SaslUtils.createPropertyMap(connectOptions, false);
-        mergedConfiguration = mergedConfiguration.useMechanismProperties(saslProperties);
-        if (connectOptions.contains(Options.SASL_DISALLOWED_MECHANISMS)) {
-            mergedConfiguration = mergedConfiguration.forbidSaslMechanisms(connectOptions.get(Options.SASL_DISALLOWED_MECHANISMS).toArray(NO_STRINGS));
-        } else if (connectOptions.contains(Options.SASL_MECHANISMS)) {
-            mergedConfiguration = mergedConfiguration.allowSaslMechanisms(connectOptions.get(Options.SASL_MECHANISMS).toArray(NO_STRINGS));
-        }
-
-        final AuthenticationContext context = AuthenticationContext.empty().with(MatchRule.ALL, mergedConfiguration);
-
-        if (useSeparateConnection) {
-            // create a brand new connection - if there is authentication info in the env, use it
-            final Connection connection;
-            try {
-                connection = endpoint.connect(providerUri, connectOptions, context).get();
-            } catch (IOException e) {
-                throw Messages.log.connectFailed(e);
-            }
-            final RemoteNamingProvider provider = new RemoteNamingProvider(connection, context, env);
-            connection.getAttachments().attach(PROVIDER_KEY, provider);
-            return provider;
-        } else if (env.containsKey(CONNECTION)) {
-            final Connection connection = (Connection) env.get(CONNECTION);
-            final RemoteNamingProvider provider = new RemoteNamingProvider(connection, context, env);
-            connection.getAttachments().attach(PROVIDER_KEY, provider);
-            return provider;
-        } else {
-            final Attachments attachments = endpoint.getAttachments();
-            ProviderMap map = attachments.getAttachment(PROVIDER_MAP_KEY);
-            if (map == null) {
-                ProviderMap appearing = attachments.attachIfAbsent(PROVIDER_MAP_KEY, map = new ProviderMap());
-                if (appearing != null) {
-                    map = appearing;
-                }
-            }
-            final URIKey key = new URIKey(providerUri.getScheme(), providerUri.getUserInfo(), providerUri.getHost(), providerUri.getPort());
-            RemoteNamingProvider provider = map.get(key);
-            if (provider == null) {
-                RemoteNamingProvider appearing = map.putIfAbsent(key, provider = new RemoteNamingProvider(endpoint, providerUri, context, env));
-                if (appearing != null) {
-                    provider = appearing;
-                }
-            }
-            return provider;
-        }
+        AuthenticationConfiguration connectConfiguration = useSeparateConnection ? operateConfiguration : client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", "connect");
+        return new RemoteNamingProvider(endpoint, providerUri, connectConfiguration, operateConfiguration, sslContext, env);
     }
 
     private Endpoint getEndpoint(final FastHashtable<String, Object> env) {
@@ -278,37 +243,5 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
     private static ClassLoader getContextClassLoader() {
         return Thread.currentThread().getContextClassLoader();
-    }
-
-    static final class URIKey {
-        private final String scheme;
-        private final String userInfo;
-        private final String host;
-        private final int port;
-        private final int hashCode;
-
-        URIKey(final String scheme, final String userInfo, final String host, final int port) {
-            this.scheme = scheme == null ? "" : scheme;
-            this.userInfo = userInfo == null ? "" : userInfo;
-            this.host = host == null ? "" : host;
-            this.port = port;
-            hashCode = port + 31 * (this.host.hashCode() + 31 * (this.userInfo.hashCode() + 31 * this.scheme.hashCode()));
-        }
-
-        public boolean equals(final Object o) {
-            return this == o || o instanceof URIKey && equals((URIKey) o);
-        }
-
-        private boolean equals(final URIKey key) {
-            return hashCode == key.hashCode && port == key.port && scheme.equals(key.scheme) && userInfo.equals(key.userInfo) && host.equals(key.host);
-        }
-
-        public int hashCode() {
-            return hashCode;
-        }
-    }
-
-    @SuppressWarnings("serial")
-    static final class ProviderMap extends ConcurrentHashMap<URIKey, RemoteNamingProvider> {
     }
 }
