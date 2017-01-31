@@ -49,6 +49,7 @@ import javax.naming.NamingException;
 import javax.naming.spi.NamingManager;
 
 import org.wildfly.common.Assert;
+import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
@@ -381,7 +382,7 @@ public final class WildFlyRootContext implements Context {
     private Object getProviderUrl(final FastHashtable<String, Object> env) {
         Object urlString= env.get(Context.PROVIDER_URL);
         if (urlString != null) {
-            return urlString;
+            return Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
         }
         final String connectionName = (String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "");
         if (connectionName.isEmpty() || connectionName.contains(",")) {
@@ -405,8 +406,9 @@ public final class WildFlyRootContext implements Context {
         }
         if ((host != null) && (port != null)) {
             urlString = protocol + "://" + host + ":" + port;
+            return Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
         }
-        return urlString;
+        return null;
     }
 
     private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
