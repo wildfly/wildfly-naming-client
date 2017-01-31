@@ -208,4 +208,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 45, value = "Cannot specify both a plain text and base64 encoded password")
     NamingException plainTextAndBase64PasswordSpecified();
+
+    @Message(id = 46, value = "Failed to configure SSL context")
+    IOException failedToConfigureSslContext(@Cause Throwable cause);
 }

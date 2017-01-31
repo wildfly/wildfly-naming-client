@@ -26,10 +26,12 @@ import static java.security.AccessController.doPrivileged;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
 import java.util.function.Supplier;
 
 import javax.naming.NamingException;
+import javax.net.ssl.SSLContext;
 
 import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.ConnectionPeerIdentity;
@@ -42,6 +44,7 @@ import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.xnio.FailedIoFuture;
 import org.xnio.FinishedIoFuture;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
@@ -65,7 +68,16 @@ public final class RemoteNamingProvider implements NamingProvider {
         // shared connection
         this.endpoint = endpoint;
         this.providerUri = providerUri;
-        connectionFactory = () -> endpoint.getConnection(providerUri);
+        connectionFactory = () -> {
+            final AuthenticationConfiguration authenticationConfiguration = CLIENT.getAuthenticationConfiguration(providerUri, context);
+            final SSLContext sslContext;
+            try {
+                sslContext = CLIENT.getSSLContext(providerUri, context);
+            } catch (GeneralSecurityException e) {
+                return new FailedIoFuture<>(Messages.log.failedToConfigureSslContext(e));
+            }
+            return endpoint.getConnection(providerUri, sslContext, authenticationConfiguration);
+        };
         closeable = NamingCloseable.NULL;
         authenticationConfiguration = CLIENT.getAuthenticationConfiguration(providerUri, context, -1, "jndi", "jboss", "operate");
     }
