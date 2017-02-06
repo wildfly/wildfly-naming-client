@@ -120,7 +120,16 @@ public final class WildFlyRootContext implements Context {
     @Override
     public Object lookup(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        return lookup(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        if (reparsedName.isEmpty()) {
+            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+        }
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.lookup(name);
+        } else {
+            return result.context.lookup(reparsedName.getName());
+        }
     }
 
     @Override
@@ -130,53 +139,98 @@ public final class WildFlyRootContext implements Context {
         if (reparsedName.isEmpty()) {
             return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
         }
-        return getProviderContext(reparsedName.getUrlScheme()).lookup(reparsedName.getName());
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.lookup(name);
+        } else {
+            return result.context.lookup(reparsedName.getName());
+        }
     }
 
     @Override
     public void bind(final String name, final Object obj) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        bind(getNameParser().parse(name), obj);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.bind(name, obj);
+        } else {
+            result.context.bind(reparsedName.getName(), obj);
+        }
     }
 
     @Override
     public void bind(final Name name, final Object obj) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        getProviderContext(reparsedName.getUrlScheme()).bind(reparsedName.getName(), obj);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.bind(name, obj);
+        } else {
+            result.context.bind(reparsedName.getName(), obj);
+        }
     }
 
     @Override
     public void rebind(final String name, final Object obj) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        rebind(getNameParser().parse(name), obj);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.rebind(name, obj);
+        } else {
+            result.context.rebind(reparsedName.getName(), obj);
+        }
     }
 
     @Override
     public void rebind(final Name name, final Object obj) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        getProviderContext(reparsedName.getUrlScheme()).rebind(reparsedName.getName(), obj);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.rebind(name, obj);
+        } else {
+            result.context.rebind(reparsedName.getName(), obj);
+        }
     }
 
     @Override
     public void unbind(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        unbind(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.unbind(name);
+        } else {
+            result.context.unbind(reparsedName.getName());
+        }
     }
 
     @Override
     public void unbind(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        getProviderContext(reparsedName.getUrlScheme()).unbind(reparsedName.getName());
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.unbind(name);
+        } else {
+            result.context.unbind(reparsedName.getName());
+        }
     }
 
     @Override
     public void rename(final String oldName, final String newName) throws NamingException {
         Assert.checkNotNullParam("oldName", oldName);
         Assert.checkNotNullParam("newName", newName);
-        rename(getNameParser().parse(oldName), getNameParser().parse(newName));
+        final ReparsedName oldReparsedName = reparse(getNameParser().parse(oldName));
+        final ReparsedName newReparsedName = reparse(getNameParser().parse(newName));
+        ContextResult result = getProviderContext(oldReparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.rename(oldName, newName);
+        } else {
+            result.context.rename(oldReparsedName.getName(), newReparsedName.getName());
+        }
     }
 
     @Override
@@ -185,77 +239,140 @@ public final class WildFlyRootContext implements Context {
         Assert.checkNotNullParam("newName", newName);
         final ReparsedName oldReparsedName = reparse(oldName);
         final ReparsedName newReparsedName = reparse(newName);
-        getProviderContext(oldReparsedName.getUrlScheme()).rename(oldReparsedName.getName(), newReparsedName.getName());
+        ContextResult result = getProviderContext(oldReparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.rename(oldName, newName);
+        } else {
+            result.context.rename(oldReparsedName.getName(), newReparsedName.getName());
+        }
     }
 
     @Override
     public NamingEnumeration<NameClassPair> list(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        return list(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.list(
+                    name));
+        } else {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.list(
+                    reparsedName.getName()));
+        }
     }
 
     @Override
     public NamingEnumeration<NameClassPair> list(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).list(
-                reparsedName.getName()));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.list(
+                    name));
+        } else {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.list(
+                    reparsedName.getName()));
+        }
     }
 
     @Override
     public NamingEnumeration<Binding> listBindings(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        return listBindings(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.listBindings(
+                    name));
+        } else {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.listBindings(
+                    reparsedName.getName()));
+        }
     }
 
     @Override
     public NamingEnumeration<Binding> listBindings(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).listBindings(
-                reparsedName.getName()));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.listBindings(
+                    name));
+        } else {
+            return CloseableNamingEnumeration.fromEnumeration(getProviderContext(reparsedName.getUrlScheme()).context.listBindings(
+                    reparsedName.getName()));
+        }
     }
 
     @Override
     public void destroySubcontext(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        destroySubcontext(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.destroySubcontext(name);
+        } else {
+            result.context.destroySubcontext(reparsedName.getName());
+        }
     }
 
     @Override
     public void destroySubcontext(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        getProviderContext(reparsedName.getUrlScheme()).destroySubcontext(reparsedName.getName());
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            result.context.destroySubcontext(name);
+        } else {
+            result.context.destroySubcontext(reparsedName.getName());
+        }
     }
 
     @Override
     public Context createSubcontext(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        return createSubcontext(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.createSubcontext(name);
+        } else {
+            return result.context.createSubcontext(reparsedName.getName());
+        }
     }
 
     @Override
     public Context createSubcontext(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        return getProviderContext(reparsedName.getUrlScheme()).createSubcontext(reparsedName.getName());
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.createSubcontext(name);
+        } else {
+            return result.context.createSubcontext(reparsedName.getName());
+        }
     }
 
     @Override
     public Object lookupLink(final String name) throws NamingException {
         Assert.checkNotNullParam("name", name);
-        return lookupLink(getNameParser().parse(name));
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.lookupLink(name);
+        } else {
+            return result.context.lookupLink(reparsedName.getName());
+        }
     }
 
     @Override
     public Object lookupLink(final Name name) throws NamingException {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
-        if (reparsedName.isEmpty()) {
-            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return result.context.lookupLink(name);
+        } else {
+            return result.context.lookupLink(reparsedName.getName());
         }
-        return getProviderContext(reparsedName.getUrlScheme()).lookupLink(reparsedName.getName());
     }
 
     @Override
@@ -303,7 +420,7 @@ public final class WildFlyRootContext implements Context {
         return "";
     }
 
-    private Context getProviderContext(final String nameScheme) throws NamingException {
+    private ContextResult getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
         final Object urlString = getProviderUrl(getEnvironment());
         URI providerUri;
@@ -322,7 +439,7 @@ public final class WildFlyRootContext implements Context {
                     if (! contextIterator.hasNext()) break;
                     final NamingContextFactory contextFactory = contextIterator.next();
                     if (contextFactory.supportsUriScheme(null, nameScheme)) {
-                        return contextFactory.createRootContext(null, nameScheme, getEnvironment());
+                        return new ContextResult(contextFactory.createRootContext(null, nameScheme, getEnvironment()), false);
                     }
                 } catch (ServiceConfigurationError error) {
                     Messages.log.serviceConfigFailed(error);
@@ -332,11 +449,11 @@ public final class WildFlyRootContext implements Context {
                 // there is a name scheme to resolve; try the old-fashioned way
                 final Context context = NamingManager.getURLContext(nameScheme, environment);
                 if (context != null) {
-                    return context;
+                    return new ContextResult(context, true);
                 }
             }
             // by default, support an empty local root context
-            return NamingUtils.emptyContext(getEnvironment());
+            return  new ContextResult(NamingUtils.emptyContext(getEnvironment()), false);
         }
         // get active naming providers
         final ServiceLoader<NamingProviderFactory> providerLoader = this.namingProviderServiceLoader;
@@ -352,7 +469,7 @@ public final class WildFlyRootContext implements Context {
                         if (! contextIterator.hasNext()) break;
                         final NamingContextFactory contextFactory = contextIterator.next();
                         if (contextFactory.supportsUriScheme(provider, nameScheme)) {
-                            return contextFactory.createRootContext(provider, nameScheme, getEnvironment());
+                            return  new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment()), false);
                         }
                     } catch (ServiceConfigurationError error) {
                         Messages.log.serviceConfigFailed(error);
@@ -365,7 +482,7 @@ public final class WildFlyRootContext implements Context {
                 // there is a name scheme to resolve; try the old-fashioned way
                 final Context context = NamingManager.getURLContext(nameScheme, environment);
                 if (context != null) {
-                    return context;
+                    return  new ContextResult(context, true);
                 }
             }
             throw Messages.log.noProviderForUri(nameScheme);
@@ -458,5 +575,17 @@ public final class WildFlyRootContext implements Context {
         boolean isEmpty(){
             return urlScheme == null && name.isEmpty();
         }
+    }
+
+    private class ContextResult {
+        final Context context;
+        final boolean oldStyle;
+
+        private ContextResult(Context context, boolean oldStyle) {
+            this.context = context;
+            this.oldStyle = oldStyle;
+        }
+
+
     }
 }
