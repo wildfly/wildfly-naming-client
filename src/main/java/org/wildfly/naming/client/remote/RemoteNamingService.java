@@ -47,7 +47,7 @@ import org.xnio.OptionMap;
  * @author <a href="mailto:fjuma@redhat.com">Farah Juma</a>
  */
 public class RemoteNamingService {
-    private static byte[] SUPPORTED_PROTOCOL_VERSIONS = new byte[] { 1, 2 };
+    private static final int[] SUPPORTED_PROTOCOL_VERSIONS = new int[] { 1, 2 };
     private final Context localContext;
     private Registration registration;
 
@@ -120,8 +120,10 @@ public class RemoteNamingService {
                 try (MessageOutputStream mos = messageTracker.openMessage()) {
                     mos.write(ProtocolUtils.NAMING_BYTES);
                     mos.writeByte(SUPPORTED_PROTOCOL_VERSIONS.length);
-                    for (byte version : SUPPORTED_PROTOCOL_VERSIONS) {
-                        mos.writeByte(version);
+                    for (int version : SUPPORTED_PROTOCOL_VERSIONS) {
+                        // Old clients cannot accept a single version from the server which is greater than 1 using a signed compare; so, make it less than 1 always.
+                        // New clients know about this trick and can compensate to correctly negotiate.
+                        mos.writeByte(version > 1 ? version | 0x80 : version);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

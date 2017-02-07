@@ -113,7 +113,9 @@ final class RemoteClientTransport {
                     int length = mis.readUnsignedByte();
                     boolean hasOne = false, hasTwo = false;
                     for (int i = 0; i < length; i ++) {
-                        int v = mis.readUnsignedByte();
+                        // Servers present versions >= 2 with the MSB set so that old clients don't get confused.
+                        // We strip the MSB to compensate.
+                        int v = mis.readUnsignedByte() & 0x7f;
                         if (v == 1) {
                             hasOne = true;
                         } else if (v == 2) {
