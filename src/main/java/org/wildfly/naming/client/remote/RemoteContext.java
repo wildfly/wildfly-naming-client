@@ -29,6 +29,7 @@ import javax.naming.Binding;
 import javax.naming.CommunicationException;
 import javax.naming.CompositeName;
 import javax.naming.Context;
+import javax.naming.InvalidNameException;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NamingException;
@@ -84,87 +85,113 @@ final class RemoteContext extends AbstractFederatingContext {
         }
     }
 
-    protected Object lookupNative(final Name name) throws NamingException {
+    Name getRealName(Name name) throws InvalidNameException {
+        // this could go away after WFNC-20
+        if (scheme == null) {
+            return name;
+        }
         if (name.isEmpty()) {
+            return new CompositeName(scheme + ":");
+        }
+        final String part0 = name.get(0);
+        final Name clone = (Name) name.clone();
+        clone.remove(0);
+        clone.add(0, scheme + ":" + part0);
+        return clone;
+    }
+
+    protected Object lookupNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
+        if (realName.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
         return provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             return getRemoteTransport(peerIdentity).lookup(this, name_, peerIdentity, false);
-        }, name, null);
+        }, realName, null);
     }
 
     protected Object lookupLinkNative(final Name name) throws NamingException {
-        if (name.isEmpty()) {
+        Name realName = getRealName(name);
+        if (realName.isEmpty()) {
             return new RemoteContext(provider, scheme, getEnvironment());
         }
         return provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             return getRemoteTransport(peerIdentity).lookup(this, name_, peerIdentity, true);
-        }, name, null);
+        }, realName, null);
     }
 
     protected void bindNative(final Name name, final Object obj) throws NamingException {
+        Name realName = getRealName(name);
         provider.performExceptionAction((name_, obj_) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             getRemoteTransport(peerIdentity).bind(name_, obj_, peerIdentity, false);
             return null;
-        }, name, obj);
+        }, realName, obj);
     }
 
     protected void rebindNative(final Name name, final Object obj) throws NamingException {
+        Name realName = getRealName(name);
         provider.performExceptionAction((name_, obj_) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             getRemoteTransport(peerIdentity).bind(name_, obj_, peerIdentity, true);
             return null;
-        }, name, obj);
+        }, realName, obj);
     }
 
     protected void unbindNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
         provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             getRemoteTransport(peerIdentity).unbind(name_, peerIdentity);
             return null;
-        }, name, null);
+        }, realName, null);
     }
 
     protected void renameNative(final Name oldName, final Name newName) throws NamingException {
+        Name realOldName = getRealName(oldName);
+        Name realNewName = getRealName(newName);
         provider.performExceptionAction((oldName_, newName_) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             getRemoteTransport(peerIdentity).rename(oldName_, newName_, peerIdentity);
             return null;
-        }, oldName, newName);
+        }, realOldName, realNewName);
     }
 
     protected CloseableNamingEnumeration<NameClassPair> listNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
         return provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             return getRemoteTransport(peerIdentity).list(name_, peerIdentity);
-        }, name, null);
+        }, realName, null);
     }
 
     protected CloseableNamingEnumeration<Binding> listBindingsNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
         return provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             return getRemoteTransport(peerIdentity).listBindings(name_, this, peerIdentity);
-        }, name, null);
+        }, realName, null);
     }
 
     protected void destroySubcontextNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
         provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             getRemoteTransport(peerIdentity).destroySubcontext(name_, peerIdentity);
             return null;
-        }, name, null);
+        }, realName, null);
     }
 
     protected Context createSubcontextNative(final Name name) throws NamingException {
+        Name realName = getRealName(name);
         return provider.performExceptionAction((name_, ignored) -> {
             final ConnectionPeerIdentity peerIdentity = provider.getPeerIdentityForNaming();
             final CompositeName compositeName = NamingUtils.toCompositeName(name_);
             getRemoteTransport(peerIdentity).createSubcontext(compositeName, peerIdentity);
             return new RelativeFederatingContext(getEnvironment(), this, compositeName);
-        }, name, null);
+        }, realName, null);
     }
 
     public void close() {
@@ -172,7 +199,6 @@ final class RemoteContext extends AbstractFederatingContext {
     }
 
     public String getNameInNamespace() throws NamingException {
-        final String scheme = this.scheme;
-        return scheme == null || scheme.isEmpty() ? "" : scheme + ":";
+        return "";
     }
 }
