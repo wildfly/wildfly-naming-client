@@ -45,7 +45,7 @@ public final class RemoteNamingContextFactory implements NamingContextFactory {
     }
 
     public boolean supportsUriScheme(final NamingProvider namingProvider, final String nameScheme) {
-        return namingProvider instanceof RemoteNamingProvider && nameScheme == null;
+        return namingProvider instanceof RemoteNamingProvider && (nameScheme == null || nameScheme.equals("java"));
     }
 
     public Context createRootContext(final NamingProvider namingProvider, final String nameScheme, final FastHashtable<String, Object> env) throws NamingException {
