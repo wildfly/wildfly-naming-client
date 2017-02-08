@@ -39,7 +39,7 @@
 
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client</artifactId>
-    <version>1.0.0.Beta10</version>
+    <version>1.0.0.Beta11-SNAPSHOT</version>
 
     <build>
         <resources>
