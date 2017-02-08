@@ -22,8 +22,11 @@
 
 package org.wildfly.naming.client.remote;
 
+import static java.security.AccessController.doPrivileged;
+
 import java.io.IOException;
 import java.net.URI;
+import java.security.PrivilegedAction;
 import java.util.function.Supplier;
 
 import javax.naming.NamingException;
@@ -101,7 +104,7 @@ public final class RemoteNamingProvider implements NamingProvider {
      * @throws IOException if connecting the peer failed
      */
     public ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException {
-        final Connection connection = connectionFactory.get().get();
+        final Connection connection = doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).get();
         if (connection.supportsRemoteAuth()) {
             return connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
         } else {
@@ -118,7 +121,7 @@ public final class RemoteNamingProvider implements NamingProvider {
      */
     public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity() {
         final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>();
-        connectionFactory.get().addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
+        doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
             public void handleCancelled(final FutureResult<ConnectionPeerIdentity> attachment) {
                 attachment.setCancelled();
             }
