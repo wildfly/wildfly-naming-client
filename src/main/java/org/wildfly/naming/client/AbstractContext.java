@@ -213,7 +213,7 @@ public abstract class AbstractContext implements Context, AutoCloseable {
         if (nativeOldName.isEmpty() || nativeNewName.isEmpty()) {
             throw Messages.log.invalidEmptyName();
         }
-        rebindNative(nativeOldName, nativeNewName);
+        renameNative(nativeOldName, nativeNewName);
     }
 
     protected void renameNative(Name oldName, Name newName) throws NamingException {
