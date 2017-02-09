@@ -422,10 +422,10 @@ public final class WildFlyRootContext implements Context {
 
     private ContextResult getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
-        final Object urlString = getProviderUrl(getEnvironment());
+        final String urlString = getProviderUrl(getEnvironment());
         URI providerUri;
         try {
-            providerUri = urlString == null ? null : new URI(urlString.toString());
+            providerUri = urlString == null ? null : new URI(urlString);
         } catch (URISyntaxException e) {
             throw Messages.log.invalidProviderUri(e, urlString);
         }
@@ -496,8 +496,8 @@ public final class WildFlyRootContext implements Context {
      * @param env the environment (must not be {@code null})
      * @return the provider URL, or {@code null} if there is none or if it cannot be determined from other properties
      */
-    private Object getProviderUrl(final FastHashtable<String, Object> env) {
-        Object urlString= env.get(Context.PROVIDER_URL);
+    private String getProviderUrl(final FastHashtable<String, Object> env) {
+        Object urlString = env.get(Context.PROVIDER_URL);
         if (urlString != null) {
             return Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
         }
@@ -521,9 +521,13 @@ public final class WildFlyRootContext implements Context {
         } else {
             protocol = "remote+http";
         }
-        if ((host != null) && (port != null)) {
-            urlString = protocol + "://" + host + ":" + port;
-            return Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
+        if (host != null && port != null) {
+            String realHost = Expression.compile(host, Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
+            if (realHost.indexOf(':') != -1 && ! realHost.startsWith("[") && ! realHost.endsWith("]")) {
+                // probably IPv6?
+                realHost = "[" + realHost + "]";
+            }
+            return protocol + "://" + realHost + ":" + port;
         }
         return null;
     }
