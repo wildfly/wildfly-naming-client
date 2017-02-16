@@ -37,6 +37,8 @@ import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_USERNAME_KEY;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
@@ -50,7 +52,6 @@ import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RemotingOptions;
 import org.kohsuke.MetaInfServices;
 import org.wildfly.common.expression.Expression;
-import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.NamingProviderFactory;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
@@ -98,7 +99,8 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         return endpoint != null && endpoint.isValidUriScheme(providerScheme);
     }
 
-    public NamingProvider createProvider(final URI providerUri, final FastHashtable<String, Object> env) throws NamingException {
+    public RemoteNamingProvider createProvider(final FastHashtable<String, Object> env, final URI... providerUris) throws NamingException {
+        final List<RemoteNamingProvider> remoteNamingProviders = new ArrayList<>(providerUris.length);
         final ClassLoader classLoader = secureGetContextClassLoader();
         final Properties properties = getPropertiesFromEnv(env);
 
@@ -119,29 +121,15 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
          */
         boolean useSeparateConnection = getBooleanValueFromProperties(properties, USE_SEPARATE_CONNECTION, false);
 
-        AuthenticationContext captured = AuthenticationContext.captureCurrent();
-
-        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
-        AuthenticationConfiguration operateConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
+        CallbackHandler callbackHandler = null;
+        String decodedPassword = null;
         if (callbackClass != null && (userName != null || password != null)) {
             throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
         }
-        final SSLContext sslContext;
-        try {
-            sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss", "connect");
-        } catch (GeneralSecurityException e) {
-            throw Messages.log.failedToConfigureSslContext(e);
-        }
-
-        operateConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, operateConfiguration);
-
         if (callbackClass != null) {
             try {
                 final Class<?> clazz = Class.forName(callbackClass, true, classLoader);
-                final CallbackHandler callbackHandler = (CallbackHandler) clazz.newInstance();
-                if (callbackHandler != null) {
-                    operateConfiguration = operateConfiguration.useCallbackHandler(callbackHandler);
-                }
+                callbackHandler = (CallbackHandler) clazz.newInstance();
             } catch (ClassNotFoundException e) {
                 throw Messages.log.failedToLoadCallbackHandlerClass(e, callbackClass);
             } catch (Exception e) {
@@ -151,12 +139,33 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
             if (password != null && passwordBase64 != null) {
                 throw Messages.log.plainTextAndBase64PasswordSpecified();
             }
-            final String decodedPassword = passwordBase64 != null ? CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString() : password;
-            operateConfiguration = operateConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
+            decodedPassword = passwordBase64 != null ? CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString() : password;
         }
 
-        AuthenticationConfiguration connectConfiguration = useSeparateConnection ? operateConfiguration : client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", "connect");
-        return new RemoteNamingProvider(endpoint, providerUri, connectConfiguration, operateConfiguration, sslContext, env);
+        AuthenticationContext captured = AuthenticationContext.captureCurrent();
+        final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
+
+        for (URI providerUri : providerUris) {
+            AuthenticationConfiguration operateConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
+            final SSLContext sslContext;
+            try {
+                sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss", "connect");
+            } catch (GeneralSecurityException e) {
+                throw Messages.log.failedToConfigureSslContext(e);
+            }
+
+            operateConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, operateConfiguration);
+
+            if (callbackHandler != null) {
+                operateConfiguration = operateConfiguration.useCallbackHandler(callbackHandler);
+            } else if (userName != null) {
+                operateConfiguration = operateConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
+            }
+
+            AuthenticationConfiguration connectConfiguration = useSeparateConnection ? operateConfiguration : client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", "connect");
+            remoteNamingProviders.add(new SingleRemoteNamingProvider(endpoint, providerUri, connectConfiguration, operateConfiguration, sslContext, env));
+        }
+        return new AggregateRemoteNamingProvider(remoteNamingProviders);
     }
 
     private Endpoint getEndpoint(final FastHashtable<String, Object> env) {

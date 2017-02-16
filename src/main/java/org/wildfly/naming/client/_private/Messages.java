@@ -211,4 +211,10 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 46, value = "Failed to configure SSL context")
     CommunicationException failedToConfigureSslContext(@Cause Throwable cause);
+
+    @Message(id = 47, value = "Failed to connect to any server")
+    IOException failedToConnectToAnyServer();
+
+    @Message(id = 48, value = "Failed to close one or more naming providers")
+    NamingException failedToCloseNamingProviders();
 }

@@ -22,26 +22,17 @@
 
 package org.wildfly.naming.client.remote;
 
-import static java.security.AccessController.doPrivileged;
-
 import java.io.IOException;
 import java.net.URI;
-import java.security.PrivilegedAction;
-import java.util.function.Supplier;
 
 import javax.naming.NamingException;
-import javax.net.ssl.SSLContext;
 
-import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.Endpoint;
-import org.wildfly.naming.client.NamingCloseable;
+
 import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client._private.Messages;
-import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.AuthenticationException;
-import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.xnio.FutureResult;
 import org.xnio.IoFuture;
 
 /**
@@ -50,31 +41,14 @@ import org.xnio.IoFuture;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class RemoteNamingProvider implements NamingProvider {
-
-    private final Endpoint endpoint;
-    private final Supplier<IoFuture<Connection>> connectionFactory;
-    private final NamingCloseable closeable;
-    private final URI providerUri;
-    private final AuthenticationConfiguration authenticationConfiguration;
-
-    RemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration, final SSLContext sslContext, final FastHashtable<String, Object> env) {
-        // shared connection
-        this.endpoint = endpoint;
-        this.providerUri = providerUri;
-        connectionFactory = () -> endpoint.getConnection(providerUri, sslContext, connectionConfiguration, operateConfiguration);
-        closeable = NamingCloseable.NULL;
-        this.authenticationConfiguration = operateConfiguration;
-    }
+public abstract class RemoteNamingProvider implements NamingProvider {
 
     /**
      * Get the Remoting endpoint for this provider.
      *
      * @return the Remoting endpoint for this provider (not {@code null})
      */
-    public Endpoint getEndpoint() {
-        return endpoint;
-    }
+    public abstract Endpoint getEndpoint();
 
     /**
      * Get the connection peer identity for a naming operation.  If the connection is not configured as {@code immediate}, then the connection
@@ -103,14 +77,7 @@ public final class RemoteNamingProvider implements NamingProvider {
      * @throws AuthenticationException if authenticating or re-authenticating the peer failed
      * @throws IOException if connecting the peer failed
      */
-    public ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException {
-        final Connection connection = doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).get();
-        if (connection.supportsRemoteAuth()) {
-            return connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
-        } else {
-            return connection.getConnectionPeerIdentity();
-        }
-    }
+    public abstract ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException;
 
     /**
      * Get the future connection peer identity.  If the connection is not configured as {@code immediate}, then the connection
@@ -119,37 +86,10 @@ public final class RemoteNamingProvider implements NamingProvider {
      *
      * @return the future connection peer identity (not {@code null})
      */
-    public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity() {
-        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>();
-        doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
-            public void handleCancelled(final FutureResult<ConnectionPeerIdentity> attachment) {
-                attachment.setCancelled();
-            }
+    public abstract IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity();
 
-            public void handleFailed(final IOException exception, final FutureResult<ConnectionPeerIdentity> attachment) {
-                attachment.setException(exception);
-            }
+    public abstract URI getProviderUri();
 
-            public void handleDone(final Connection data, final FutureResult<ConnectionPeerIdentity> attachment) {
-                try {
-                    if (data.supportsRemoteAuth()) {
-                        attachment.setResult(data.getPeerIdentityContext().authenticate(authenticationConfiguration));
-                    } else {
-                        attachment.setResult(data.getConnectionPeerIdentity());
-                    }
-                } catch (AuthenticationException e) {
-                    attachment.setException(new javax.security.sasl.AuthenticationException(e.getMessage(), e));
-                }
-            }
-        }, futureResult);
-        return futureResult.getIoFuture();
-    }
+    public abstract void close() throws NamingException;
 
-    public URI getProviderUri() {
-        return providerUri;
-    }
-
-    public void close() throws NamingException {
-        closeable.close();
-    }
 }
