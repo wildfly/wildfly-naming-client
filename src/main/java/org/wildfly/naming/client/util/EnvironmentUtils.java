@@ -34,7 +34,7 @@ import org.ietf.jgss.GSSCredential;
 import org.wildfly.common.Assert;
 import org.wildfly.security.auth.server.IdentityCredentials;
 import org.wildfly.security.credential.Credential;
-import org.wildfly.security.credential.GSSCredentialCredential;
+import org.wildfly.security.credential.GSSKerberosCredential;
 import org.wildfly.security.credential.PasswordCredential;
 import org.wildfly.security.credential.X509CertificateChainPrivateCredential;
 import org.wildfly.security.credential.X509CertificateChainPublicCredential;
@@ -113,7 +113,7 @@ public final class EnvironmentUtils {
         } else if (rawCredential instanceof Credential) {
             return IdentityCredentials.NONE.withCredential((Credential) rawCredential);
         } else if (rawCredential instanceof GSSCredential) {
-            return IdentityCredentials.NONE.withCredential(new GSSCredentialCredential((GSSCredential) rawCredential));
+            return IdentityCredentials.NONE.withCredential(new GSSKerberosCredential((GSSCredential) rawCredential));
         } else if (rawCredential instanceof Password) {
             return IdentityCredentials.NONE.withCredential(new PasswordCredential((Password) rawCredential));
         } else if (rawCredential instanceof X509Certificate) {
