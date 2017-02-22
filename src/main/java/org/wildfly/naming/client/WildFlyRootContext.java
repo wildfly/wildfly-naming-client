@@ -33,12 +33,15 @@ import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECT
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.security.PrivilegedAction;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 import javax.naming.Binding;
 import javax.naming.CompositeName;
+import javax.naming.ConfigurationException;
 import javax.naming.Context;
 import javax.naming.InvalidNameException;
 import javax.naming.Name;
@@ -423,15 +426,8 @@ public final class WildFlyRootContext implements Context {
     private ContextResult getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
         final String urlString = getProviderUrl(getEnvironment());
-        URI providerUri;
-        try {
-            providerUri = urlString == null ? null : new URI(urlString);
-        } catch (URISyntaxException e) {
-            throw Messages.log.invalidProviderUri(e, urlString);
-        }
-        final String providerScheme = providerUri == null ? null : providerUri.getScheme();
-        // check for empty
-        if (providerScheme == null || providerScheme.isEmpty()) {
+        final List<URI> providerUris = getProviderUris(urlString);
+        if (providerUris == null || providerUris.stream().allMatch(uri -> (uri.getScheme() == null || uri.getScheme().isEmpty()))) {
             // search for context factories which support a null provider
             synchronized (loaderLock) {
                 final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
@@ -462,8 +458,15 @@ public final class WildFlyRootContext implements Context {
             for (;;) try {
                 if (! providerIterator.hasNext()) break;
                 final NamingProviderFactory providerFactory = providerIterator.next();
-                if (providerFactory.supportsUriScheme(providerScheme, getEnvironment())) {
-                    final NamingProvider provider = providerFactory.createProvider(providerUri, getEnvironment());
+                boolean supportsUriSchemes = true;
+                for (URI providerUri : providerUris) {
+                    if (! providerFactory.supportsUriScheme(providerUri.getScheme(), getEnvironment())) {
+                        supportsUriSchemes = false;
+                        break;
+                    }
+                }
+                if (supportsUriSchemes) {
+                    final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerUris.toArray(new URI[providerUris.size()]));
                     final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
                     for (;;) try {
                         if (! contextIterator.hasNext()) break;
@@ -535,6 +538,24 @@ public final class WildFlyRootContext implements Context {
     private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
         final Object propertyValue = env.get(propertyName);
         return propertyValue == null ? null : (String) propertyValue;
+    }
+
+    private List<URI> getProviderUris(final String providerUrl) throws ConfigurationException {
+        if (providerUrl == null || providerUrl.isEmpty()) {
+            return null;
+        }
+        final String[] urls = providerUrl.split(",");
+        final List<URI> providerUris = new ArrayList<>(urls.length);
+        for (String url : urls) {
+            URI providerUri;
+            try {
+                providerUri = new URI(url.trim());
+            } catch (URISyntaxException e) {
+                throw Messages.log.invalidProviderUri(e, url);
+            }
+            providerUris.add(providerUri);
+        }
+        return providerUris;
     }
 
     ReparsedName reparse(final Name origName) throws InvalidNameException {

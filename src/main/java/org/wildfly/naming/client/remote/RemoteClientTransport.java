@@ -231,7 +231,9 @@ final class RemoteClientTransport {
                     throw Messages.log.invalidResponse();
                 }
             }
-        } catch (ClassNotFoundException | IOException e) {
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to lookup", e);
+        } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
             invocation.cancel();
@@ -464,7 +466,9 @@ final class RemoteClientTransport {
                     return CloseableNamingEnumeration.fromIterable(results);
                 }
             }
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to lookup", e);
+        } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
             invocation.cancel();
@@ -521,7 +525,9 @@ final class RemoteClientTransport {
                 }
                 return CloseableNamingEnumeration.fromIterable(results);
             }
-        } catch (IOException | ClassNotFoundException e) {
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to lookup", e);
+        } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
             invocation.cancel();
