@@ -47,6 +47,7 @@ import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
 import org.jboss.logging.annotations.Property;
+import org.wildfly.naming.client.RemoteNamingPermission;
 import org.wildfly.naming.client.RenameAcrossNamingProvidersException;
 import org.wildfly.security.auth.AuthenticationException;
 
@@ -217,4 +218,7 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 48, value = "Failed to close one or more naming providers")
     NamingException failedToCloseNamingProviders();
+
+    @Message(id = 49, value = "User %s does not have permission %s")
+    NoPermissionException noPermission(String name, RemoteNamingPermission instance);
 }

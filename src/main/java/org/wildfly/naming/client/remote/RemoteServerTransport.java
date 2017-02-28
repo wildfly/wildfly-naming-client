@@ -48,7 +48,9 @@ import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.util.MessageTracker;
+import org.wildfly.naming.client.RemoteNamingPermission;
 import org.wildfly.naming.client._private.Messages;
+import org.xnio.IoUtils;
 
 /**
  * The server side of the remote naming transport protocol.
@@ -83,9 +85,15 @@ final class RemoteServerTransport {
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
+
                 try (MessageInputStream mis = message) {
                     final byte messageId = mis.readByte();
                     final int id = readId(mis, version);
+                    if(!channel.getConnection().getLocalIdentity().implies(RemoteNamingPermission.getInstance())) {
+                        sendException(Messages.log.noPermission(channel.getConnection().getLocalIdentity().getPrincipal().getName(), RemoteNamingPermission.getInstance()), messageId, id);
+                        IoUtils.safeClose(message);
+                        return;
+                    }
                     try {
                         switch (messageId) {
                             case Protocol.CMD_LOOKUP:
