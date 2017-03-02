@@ -23,6 +23,7 @@
 package org.wildfly.naming.client._private;
 
 import static org.jboss.logging.Logger.Level.ERROR;
+import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
@@ -46,6 +47,7 @@ import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
+import org.jboss.logging.annotations.Once;
 import org.jboss.logging.annotations.Property;
 import org.wildfly.naming.client.RenameAcrossNamingProvidersException;
 import org.wildfly.security.auth.AuthenticationException;
@@ -217,4 +219,9 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 48, value = "Failed to close one or more naming providers")
     NamingException failedToCloseNamingProviders();
+
+    @Once
+    @LogMessage(level = INFO)
+    @Message(id = 49, value = "Usage of the legacy \"remote.connections\" property is deprecated; please use javax.naming.Context#PROVIDER_URL instead")
+    void deprecatedProperties();
 }

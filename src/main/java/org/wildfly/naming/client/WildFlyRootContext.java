@@ -41,7 +41,6 @@ import java.util.ServiceLoader;
 
 import javax.naming.Binding;
 import javax.naming.CompositeName;
-import javax.naming.ConfigurationException;
 import javax.naming.Context;
 import javax.naming.InvalidNameException;
 import javax.naming.Name;
@@ -425,9 +424,8 @@ public final class WildFlyRootContext implements Context {
 
     private ContextResult getProviderContext(final String nameScheme) throws NamingException {
         // get provider scheme
-        final String urlString = getProviderUrl(getEnvironment());
-        final List<URI> providerUris = getProviderUris(urlString);
-        if (providerUris == null || providerUris.stream().allMatch(uri -> (uri.getScheme() == null || uri.getScheme().isEmpty()))) {
+        final List<URI> providerUris = getProviderUris();
+        if (providerUris == null || providerUris.stream().map(URI::getScheme).allMatch(scheme -> scheme == null || scheme.isEmpty())) {
             // search for context factories which support a null provider
             synchronized (loaderLock) {
                 final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
@@ -493,69 +491,74 @@ public final class WildFlyRootContext implements Context {
     }
 
     /**
-     * Get the provider URL. If a provider URL has not been specified but properties for an EJB remote connection have
-     * been specified, attempt to determine the provider URL from the EJB remote connection host and port properties.
+     * Get the provider URI list either from the context property or from the old EJB remote connections configuration.
      *
-     * @param env the environment (must not be {@code null})
-     * @return the provider URL, or {@code null} if there is none or if it cannot be determined from other properties
+     * @return the provider URI list
      */
-    private String getProviderUrl(final FastHashtable<String, Object> env) {
+    private List<URI> getProviderUris() throws NamingException {
+        final FastHashtable<String, Object> env = getEnvironment();
         Object urlString = env.get(Context.PROVIDER_URL);
         if (urlString != null) {
-            return Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
-        }
-        final String connectionName = (String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "");
-        if (connectionName.isEmpty() || connectionName.contains(",")) {
-            // either no EJB connection properties were specified or multiple EJB connections were specified,
-            // cannot directly convert to equivalent naming properties
-            return null;
-        }
-        // only one EJB connection was specified, attempt to determine the PROVIDER_URL from the EJB HOST and PORT properties
-        final String ejbPrefix = EJB_REMOTE_CONNECTION_PREFIX + connectionName + ".";
-        final String host = getStringProperty(ejbPrefix + EJB_HOST_KEY, env);
-        final String port = getStringProperty(ejbPrefix + EJB_PORT_KEY, env);
-        String sslEnabled = getStringProperty(ejbPrefix + CONNECT_OPTIONS + Options.SSL_ENABLED, env);
-        if (sslEnabled == null) {
-            sslEnabled = getStringProperty(EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, env);
-        }
-        final String protocol;
-        if (Boolean.parseBoolean(sslEnabled)) {
-            protocol = "remote+https";
-        } else {
-            protocol = "remote+http";
-        }
-        if (host != null && port != null) {
-            String realHost = Expression.compile(host, Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
-            if (realHost.indexOf(':') != -1 && ! realHost.startsWith("[") && ! realHost.endsWith("]")) {
-                // probably IPv6?
-                realHost = "[" + realHost + "]";
+            String providerUrl = Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
+            if (! providerUrl.isEmpty()) {
+                final String[] urls = providerUrl.split(",");
+                final List<URI> providerUris = new ArrayList<>(urls.length);
+                for (String url : urls) {
+                    URI providerUri;
+                    try {
+                        providerUri = new URI(url.trim());
+                    } catch (URISyntaxException e) {
+                        throw Messages.log.invalidProviderUri(e, url);
+                    }
+                    providerUris.add(providerUri);
+                }
+                return providerUris;
             }
-            return protocol + "://" + realHost + ":" + port;
         }
+        // fall back to EJB connection properties
+        final String connectionNameList = ((String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "")).trim();
+        if (! connectionNameList.isEmpty()) {
+            Messages.log.deprecatedProperties();
+            final String[] names = connectionNameList.split("\\s*,\\s*");
+            final List<URI> uriList = new ArrayList<>(names.length);
+            for (String connectionName : names) {
+                connectionName = connectionName.trim();
+                // attempt to determine the PROVIDER_URL from the EJB HOST and PORT properties for each
+                final String ejbPrefix = EJB_REMOTE_CONNECTION_PREFIX + connectionName + ".";
+                final String host = getStringProperty(ejbPrefix + EJB_HOST_KEY, env);
+                final String port = getStringProperty(ejbPrefix + EJB_PORT_KEY, env);
+                String sslEnabled = getStringProperty(ejbPrefix + CONNECT_OPTIONS + Options.SSL_ENABLED, env);
+                if (sslEnabled == null) {
+                    sslEnabled = getStringProperty(EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, env);
+                }
+                final String protocol;
+                if (Boolean.parseBoolean(sslEnabled)) {
+                    protocol = "remote+https";
+                } else {
+                    protocol = "remote+http";
+                }
+                if (host != null && port != null) {
+                    String realHost = Expression.compile(host, Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
+                    if (realHost.indexOf(':') != - 1 && ! realHost.startsWith("[") && ! realHost.endsWith("]")) {
+                        // probably IPv6?
+                        realHost = "[" + realHost + "]";
+                    }
+                    try {
+                        uriList.add(new URI(protocol, null, realHost, Integer.parseInt(port), null, null, null));
+                    } catch (URISyntaxException e) {
+                        throw Messages.log.invalidProviderUri(e, protocol + "://" + realHost + ":" + port);
+                    }
+                }
+            }
+            return uriList;
+        }
+        // no EJB connection properties were specified; nothing left to try
         return null;
     }
 
     private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
         final Object propertyValue = env.get(propertyName);
         return propertyValue == null ? null : (String) propertyValue;
-    }
-
-    private List<URI> getProviderUris(final String providerUrl) throws ConfigurationException {
-        if (providerUrl == null || providerUrl.isEmpty()) {
-            return null;
-        }
-        final String[] urls = providerUrl.split(",");
-        final List<URI> providerUris = new ArrayList<>(urls.length);
-        for (String url : urls) {
-            URI providerUri;
-            try {
-                providerUri = new URI(url.trim());
-            } catch (URISyntaxException e) {
-                throw Messages.log.invalidProviderUri(e, url);
-            }
-            providerUris.add(providerUri);
-        }
-        return providerUris;
     }
 
     ReparsedName reparse(final Name origName) throws InvalidNameException {
