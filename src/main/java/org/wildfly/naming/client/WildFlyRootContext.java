@@ -95,14 +95,25 @@ public final class WildFlyRootContext implements Context {
      */
     public WildFlyRootContext(final FastHashtable<String, Object> environment, final ClassLoader classLoader) {
         this.environment = environment;
-        namingProviderServiceLoader = ServiceLoader.load(NamingProviderFactory.class, classLoader);
-        namingContextServiceLoader = ServiceLoader.load(NamingContextFactory.class, classLoader);
+        namingProviderServiceLoader = secureGetServiceLoader(NamingProviderFactory.class, classLoader);
+        namingContextServiceLoader = secureGetServiceLoader(NamingContextFactory.class, classLoader);
     }
 
     private WildFlyRootContext(final FastHashtable<String, Object> environment, final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader, final ServiceLoader<NamingContextFactory> namingContextServiceLoader) {
         this.environment = environment;
         this.namingProviderServiceLoader = namingProviderServiceLoader;
         this.namingContextServiceLoader = namingContextServiceLoader;
+    }
+
+    private static <T> ServiceLoader<T> secureGetServiceLoader(final Class<T> factory, final ClassLoader classLoader) {
+        final ServiceLoader<T> serviceLoader;
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            serviceLoader = doPrivileged((PrivilegedAction<ServiceLoader<T>>) () -> ServiceLoader.load(factory, classLoader));
+        } else {
+            serviceLoader = ServiceLoader.load(factory, classLoader);
+        }
+        return serviceLoader;
     }
 
     private static ClassLoader secureGetContextClassLoader() {
