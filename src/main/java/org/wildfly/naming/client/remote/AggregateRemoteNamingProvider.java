@@ -63,20 +63,26 @@ final class AggregateRemoteNamingProvider extends RemoteNamingProvider {
     public synchronized ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException {
         int startingProvider = currentProvider;
         int nextProvider = startingProvider;
+        IOException e = null;
         do {
             // attempt to get the peer identity using the next provider
             try {
                 ConnectionPeerIdentity peerIdentity = remoteNamingProviders[nextProvider].getPeerIdentity();
                 currentProvider = nextProvider; // cache this successful provider
                 return peerIdentity;
-            } catch (IOException ignored) {
+            } catch (IOException reason) {
+                if (e == null) {
+                    e = Messages.log.failedToConnectToAnyServer();
+                }
+                e.addSuppressed(reason);
                 // we'll try another provider
             }
             nextProvider = (nextProvider + 1) % remoteNamingProviders.length;
         } while (nextProvider != startingProvider);
 
         // none of the providers could be used
-        throw Messages.log.failedToConnectToAnyServer();
+        assert e != null; // because it's the only way to get here
+        throw e;
     }
 
     public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity() {
