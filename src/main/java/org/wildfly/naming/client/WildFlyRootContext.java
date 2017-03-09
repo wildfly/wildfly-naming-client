@@ -542,11 +542,13 @@ public final class WildFlyRootContext implements Context {
                 if (sslEnabled == null) {
                     sslEnabled = getStringProperty(EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, env);
                 }
-                final String protocol;
-                if (Boolean.parseBoolean(sslEnabled)) {
-                    protocol = "remote+https";
-                } else {
-                    protocol = "remote+http";
+                String protocol = getStringProperty(ejbPrefix + "protocol", env);
+                if (protocol == null) {
+                    if (Boolean.parseBoolean(sslEnabled)) {
+                        protocol = "remote+https";
+                    } else {
+                        protocol = "remote+http";
+                    }
                 }
                 if (host != null && port != null) {
                     String realHost = Expression.compile(host, Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
