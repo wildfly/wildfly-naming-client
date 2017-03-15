@@ -45,9 +45,11 @@ import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.util.MessageTracker;
+import org.wildfly.naming.client.Version;
 import org.wildfly.naming.client._private.Messages;
 
 /**
@@ -55,12 +57,16 @@ import org.wildfly.naming.client._private.Messages;
  *
  * @author <a href="mailto:fjuma@redhat.com">Farah Juma</a>
  */
-final class RemoteServerTransport {
+final class RemoteServerTransport implements RemoteTransport {
     private final MarshallingConfiguration configuration;
     private final Channel channel;
     private final int version;
     private final Context localContext;
     private final MessageTracker messageTracker;
+
+    static {
+        Version.getVersion();
+    }
 
     RemoteServerTransport(final Channel channel, final int version, final MessageTracker messageTracker, final Context localContext) {
         this.channel = channel;
@@ -70,6 +76,18 @@ final class RemoteServerTransport {
         this.configuration = new MarshallingConfiguration();
         configuration.setVersion(version == 2 ? 4 : 2);
         configuration.setClassResolver(new ContextClassResolver());
+    }
+
+    public Connection getConnection() {
+        return channel.getConnection();
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    MarshallingConfiguration getConfiguration() {
+        return configuration;
     }
 
     public void start() {

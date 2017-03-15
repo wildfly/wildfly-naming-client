@@ -44,15 +44,18 @@ import javax.naming.NamingException;
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
+import org.jboss.marshalling.ObjectResolver;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.ClientServiceHandle;
+import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
 import org.jboss.remoting3.util.BlockingInvocation;
 import org.jboss.remoting3.util.InvocationTracker;
 import org.wildfly.naming.client.CloseableNamingEnumeration;
+import org.wildfly.naming.client.MarshallingCompatibilityHelper;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.store.RelativeFederatingContext;
 import org.wildfly.naming.client.util.FastHashtable;
@@ -66,7 +69,7 @@ import org.xnio.IoFuture;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-final class RemoteClientTransport {
+final class RemoteClientTransport implements RemoteTransport {
     static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>(ProtocolUtils.NAMING, RemoteClientTransport::construct);
 
     private static final byte[] initialBytes = {
@@ -84,6 +87,18 @@ final class RemoteClientTransport {
         this.configuration = configuration;
         this.version = version;
         tracker = new InvocationTracker(channel, version == 1 ? IntUnaryOperator.identity() : RemoteClientTransport::defaultFunction);
+    }
+
+    public Connection getConnection() {
+        return channel.getConnection();
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    MarshallingConfiguration getConfiguration() {
+        return configuration;
     }
 
     private static int defaultFunction(int random) {
@@ -134,6 +149,19 @@ final class RemoteClientTransport {
                     final MarshallingConfiguration configuration = new MarshallingConfiguration();
                     configuration.setVersion(version == 2 ? 4 : 2);
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
+                    final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
+                    ObjectResolver resolver = null;
+                    for (MarshallingCompatibilityHelper helper : helpers) {
+                        final ObjectResolver nextResolver = helper.getObjectResolver(remoteClientTransport, true);
+                        if (resolver == null) {
+                            resolver = nextResolver;
+                        } else if (resolver instanceof AggregateObjectResolver) {
+                            ((AggregateObjectResolver) resolver).add(nextResolver);
+                        } else {
+                            resolver = new AggregateObjectResolver().add(nextResolver);
+                        }
+                    }
+                    if (resolver != null) remoteClientTransport.getConfiguration().setObjectResolver(resolver);
                     try (MessageOutputStream os = remoteClientTransport.tracker.allocateMessage()) {
                         os.write(ProtocolUtils.NAMING_BYTES);
                         os.writeByte(version);

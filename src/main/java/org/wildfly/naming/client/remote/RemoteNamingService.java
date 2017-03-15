@@ -24,11 +24,13 @@ package org.wildfly.naming.client.remote;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import javax.naming.CommunicationException;
 import javax.naming.Context;
 import javax.naming.NamingException;
 
+import org.jboss.marshalling.ObjectResolver;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.MessageInputStream;
@@ -37,6 +39,7 @@ import org.jboss.remoting3.OpenListener;
 import org.jboss.remoting3.Registration;
 import org.jboss.remoting3.RemotingOptions;
 import org.jboss.remoting3.util.MessageTracker;
+import org.wildfly.naming.client.MarshallingCompatibilityHelper;
 import org.wildfly.naming.client._private.Messages;
 import org.xnio.IoUtils;
 import org.xnio.OptionMap;
@@ -96,6 +99,19 @@ public class RemoteNamingService {
                                 }
                             }
                             final RemoteServerTransport remoteServerTransport = new RemoteServerTransport(channel, version, messageTracker, localContext);
+                            final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
+                            ObjectResolver resolver = null;
+                            for (MarshallingCompatibilityHelper helper : helpers) {
+                                final ObjectResolver nextResolver = helper.getObjectResolver(remoteServerTransport, false);
+                                if (resolver == null) {
+                                    resolver = nextResolver;
+                                } else if (resolver instanceof AggregateObjectResolver) {
+                                    ((AggregateObjectResolver) resolver).add(nextResolver);
+                                } else {
+                                    resolver = new AggregateObjectResolver().add(nextResolver);
+                                }
+                            }
+                            if (resolver != null) remoteServerTransport.getConfiguration().setObjectResolver(resolver);
                             remoteServerTransport.start();
                         } catch (IOException | CommunicationException e) {
                             Messages.log.failedToDetermineClientVersion(e);

@@ -23,6 +23,11 @@
 package org.wildfly.naming.client.remote;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ServiceConfigurationError;
+import java.util.ServiceLoader;
 
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.Marshalling;
@@ -30,6 +35,7 @@ import org.jboss.marshalling.MarshallingConfiguration;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
+import org.wildfly.naming.client.MarshallingCompatibilityHelper;
 
 /**
  * Utilities related to the remote naming transport protocol.
@@ -68,4 +74,20 @@ final class ProtocolUtils {
         return marshaller;
     }
 
+    private static final List<MarshallingCompatibilityHelper> MARSHALLING_COMPATIBILITY_HELPERS;
+
+    static {
+        List<MarshallingCompatibilityHelper> list = new ArrayList<>();
+        final ServiceLoader<MarshallingCompatibilityHelper> helpers = ServiceLoader.load(MarshallingCompatibilityHelper.class, ProtocolUtils.class.getClassLoader());
+        final Iterator<MarshallingCompatibilityHelper> iterator = helpers.iterator();
+        for (;;) try {
+            if (! iterator.hasNext()) break;
+            list.add(iterator.next());
+        } catch (ServiceConfigurationError e) {}
+        MARSHALLING_COMPATIBILITY_HELPERS = list;
+    }
+
+    static List<MarshallingCompatibilityHelper> getMarshallingCompatibilityHelpers() {
+        return MARSHALLING_COMPATIBILITY_HELPERS;
+    }
 }
