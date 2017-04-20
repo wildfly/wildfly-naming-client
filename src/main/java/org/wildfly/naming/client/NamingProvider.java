@@ -26,8 +26,10 @@ import java.net.URI;
 import java.util.function.BiFunction;
 
 import javax.naming.NamingException;
+import javax.net.ssl.SSLContext;
 
 import org.wildfly.common.function.ExceptionBiFunction;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.PeerIdentity;
 
 /**
@@ -50,6 +52,20 @@ public interface NamingProvider extends AutoCloseable {
      * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
      */
     PeerIdentity getPeerIdentityForNaming() throws NamingException;
+
+    /**
+     * Get the authentication configuration for this naming provider, or {@code null} if no particular configuration is established.
+     *
+     * @return the naming configuration, or {@code null} for none
+     */
+    AuthenticationConfiguration getAuthenticationConfiguration();
+
+    /**
+     * Get the SSL context for this naming provider, or {@code null} if no particular SSL context is established.
+     *
+     * @return the SSL context, or {@code null} for none
+     */
+    SSLContext getSSLContext();
 
     /**
      * Get the current naming provider being used for the current deserialization operation.

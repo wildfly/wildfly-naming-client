@@ -29,11 +29,13 @@ import java.net.URI;
 import java.util.Collection;
 
 import javax.naming.NamingException;
+import javax.net.ssl.SSLContext;
 
 import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.Endpoint;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.security.auth.AuthenticationException;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.IoFuture;
 
 /**
@@ -109,5 +111,15 @@ final class AggregateRemoteNamingProvider extends RemoteNamingProvider {
 
     private RemoteNamingProvider getCurrentProvider() {
         return remoteNamingProviders[currentProvider];
+    }
+
+    public AuthenticationConfiguration getAuthenticationConfiguration() {
+        // TODO
+        return null;
+    }
+
+    public SSLContext getSSLContext() {
+        // TODO
+        return null;
     }
 }

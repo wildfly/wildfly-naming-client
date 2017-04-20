@@ -49,12 +49,14 @@ import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.spi.NamingManager;
+import javax.net.ssl.SSLContext;
 
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
+import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.Options;
 
 /**
@@ -75,6 +77,9 @@ public final class WildFlyRootContext implements Context {
     private final Object loaderLock = new Object();
     private final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader;
     private final ServiceLoader<NamingContextFactory> namingContextServiceLoader;
+
+    private AuthenticationConfiguration stickyAuthenticationConfiguration;
+    private SSLContext stickySslContext;
 
     /**
      * Construct a new instance, searching the thread context class loader for providers.  If no context class loader is

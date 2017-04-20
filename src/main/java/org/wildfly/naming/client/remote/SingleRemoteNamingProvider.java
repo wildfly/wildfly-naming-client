@@ -26,20 +26,22 @@ import static java.security.AccessController.doPrivileged;
 
 import java.io.IOException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
 import java.util.function.Supplier;
 
 import javax.naming.NamingException;
 import javax.net.ssl.SSLContext;
 
-import org.jboss.remoting3.Connection;
 import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.Endpoint;
 import org.wildfly.naming.client.NamingCloseable;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.AuthenticationException;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
-import org.xnio.FutureResult;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
+import org.xnio.FailedIoFuture;
 import org.xnio.IoFuture;
 
 /**
@@ -50,19 +52,40 @@ import org.xnio.IoFuture;
  */
 final class SingleRemoteNamingProvider extends RemoteNamingProvider {
 
+    private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
     private final Endpoint endpoint;
-    private final Supplier<IoFuture<Connection>> connectionFactory;
+    private final Supplier<IoFuture<ConnectionPeerIdentity>> connectionFactory;
     private final NamingCloseable closeable;
     private final URI providerUri;
     private final AuthenticationConfiguration authenticationConfiguration;
+    private final SSLContext sslContext;
 
-    SingleRemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationConfiguration connectionConfiguration, final AuthenticationConfiguration operateConfiguration, final SSLContext sslContext, final FastHashtable<String, Object> env) {
+    SingleRemoteNamingProvider(final Endpoint endpoint, final URI providerUri, final AuthenticationConfiguration authenticationConfiguration, final SSLContext sslContext, final FastHashtable<String, Object> env) {
         // shared connection
         this.endpoint = endpoint;
         this.providerUri = providerUri;
-        connectionFactory = () -> endpoint.getConnection(providerUri, sslContext, connectionConfiguration, operateConfiguration);
+        this.authenticationConfiguration = authenticationConfiguration;
+        this.sslContext = sslContext;
+        connectionFactory = () -> {
+            SSLContext realSSLContext;
+            if (sslContext == null) {
+                try {
+                    realSSLContext = CLIENT.getSSLContext(providerUri, AuthenticationContext.captureCurrent(), "jndi", "jboss");
+                } catch (GeneralSecurityException e) {
+                    return new FailedIoFuture<>(new IOException(e));
+                }
+            } else {
+                realSSLContext = sslContext;
+            }
+            AuthenticationConfiguration realConf;
+            if (authenticationConfiguration == null) {
+                realConf = CLIENT.getAuthenticationConfiguration(providerUri, AuthenticationContext.captureCurrent(), -1, "jndi", "jboss");
+            } else {
+                realConf = authenticationConfiguration;
+            }
+            return endpoint.getConnectedIdentity(providerUri, realSSLContext, realConf);
+        };
         closeable = NamingCloseable.NULL;
-        this.authenticationConfiguration = operateConfiguration;
     }
 
     /**
@@ -84,12 +107,7 @@ final class SingleRemoteNamingProvider extends RemoteNamingProvider {
      * @throws IOException if connecting the peer failed
      */
     public ConnectionPeerIdentity getPeerIdentity() throws AuthenticationException, IOException {
-        final Connection connection = doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).get();
-        if (connection.supportsRemoteAuth()) {
-            return connection.getPeerIdentityContext().authenticate(authenticationConfiguration);
-        } else {
-            return connection.getConnectionPeerIdentity();
-        }
+        return getFuturePeerIdentity().get();
     }
 
     /**
@@ -100,29 +118,15 @@ final class SingleRemoteNamingProvider extends RemoteNamingProvider {
      * @return the future connection peer identity (not {@code null})
      */
     public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity() {
-        final FutureResult<ConnectionPeerIdentity> futureResult = new FutureResult<>();
-        doPrivileged((PrivilegedAction<IoFuture<Connection>>) connectionFactory::get).addNotifier(new IoFuture.HandlingNotifier<Connection, FutureResult<ConnectionPeerIdentity>>() {
-            public void handleCancelled(final FutureResult<ConnectionPeerIdentity> attachment) {
-                attachment.setCancelled();
-            }
+        return doPrivileged((PrivilegedAction<IoFuture<ConnectionPeerIdentity>>) connectionFactory::get);
+    }
 
-            public void handleFailed(final IOException exception, final FutureResult<ConnectionPeerIdentity> attachment) {
-                attachment.setException(exception);
-            }
+    public AuthenticationConfiguration getAuthenticationConfiguration() {
+        return authenticationConfiguration;
+    }
 
-            public void handleDone(final Connection data, final FutureResult<ConnectionPeerIdentity> attachment) {
-                try {
-                    if (data.supportsRemoteAuth()) {
-                        attachment.setResult(data.getPeerIdentityContext().authenticate(authenticationConfiguration));
-                    } else {
-                        attachment.setResult(data.getConnectionPeerIdentity());
-                    }
-                } catch (AuthenticationException e) {
-                    attachment.setException(new javax.security.sasl.AuthenticationException(e.getMessage(), e));
-                }
-            }
-        }, futureResult);
-        return futureResult.getIoFuture();
+    public SSLContext getSSLContext() {
+        return sslContext;
     }
 
     public URI getProviderUri() {

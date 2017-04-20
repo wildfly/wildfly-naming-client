@@ -44,6 +44,12 @@ import org.xnio.IoFuture;
 public abstract class RemoteNamingProvider implements NamingProvider {
 
     /**
+     * Construct a new instance.
+     */
+    protected RemoteNamingProvider() {
+    }
+
+    /**
      * Get the Remoting endpoint for this provider.
      *
      * @return the Remoting endpoint for this provider (not {@code null})
@@ -61,10 +67,10 @@ public abstract class RemoteNamingProvider implements NamingProvider {
     public ConnectionPeerIdentity getPeerIdentityForNaming() throws NamingException {
         try {
             return getPeerIdentity();
-        } catch (IOException e) {
-            throw Messages.log.connectFailed(e);
         } catch (AuthenticationException e) {
             throw Messages.log.authenticationFailed(e);
+        } catch (IOException e) {
+            throw Messages.log.connectFailed(e);
         }
     }
 

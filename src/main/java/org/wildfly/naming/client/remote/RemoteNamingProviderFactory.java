@@ -47,7 +47,6 @@ import javax.naming.NamingException;
 import javax.net.ssl.SSLContext;
 import javax.security.auth.callback.CallbackHandler;
 
-import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.RemotingOptions;
 import org.kohsuke.MetaInfServices;
@@ -88,9 +87,6 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
     private static final String CONNECT_OPTIONS_PREFIX = "jboss.naming.client.connect.options.";
     private static final String NAMING_CLIENT_PREFIX = "jboss.naming.client.";
     private static final OptionMap DEFAULT_CONNECTION_CREATION_OPTIONS = OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, false);
-    private static final String[] NO_STRINGS = new String[0];
-
-    static final Attachments.Key<RemoteNamingProvider> PROVIDER_KEY = new Attachments.Key<>(RemoteNamingProvider.class);
 
     private static final AuthenticationContextConfigurationClient AUTH_CONFIGURATION_CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
@@ -146,7 +142,7 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
 
         for (URI providerUri : providerUris) {
-            AuthenticationConfiguration operateConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
+            AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
             final SSLContext sslContext;
             try {
                 sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss", "connect");
@@ -154,18 +150,17 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
                 throw Messages.log.failedToConfigureSslContext(e);
             }
 
-            operateConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, operateConfiguration);
+            authenticationConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, authenticationConfiguration);
 
             if (callbackHandler != null) {
-                operateConfiguration = operateConfiguration.useCallbackHandler(callbackHandler);
+                authenticationConfiguration = authenticationConfiguration.useCallbackHandler(callbackHandler);
             } else if (userName != null) {
-                operateConfiguration = operateConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
+                authenticationConfiguration = authenticationConfiguration.useName(userName).usePassword(decodedPassword).useRealm(realm);
             }
 
-            AuthenticationConfiguration connectConfiguration = useSeparateConnection ? operateConfiguration : client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", "connect");
-            remoteNamingProviders.add(new SingleRemoteNamingProvider(endpoint, providerUri, connectConfiguration, operateConfiguration, sslContext, env));
+            remoteNamingProviders.add(new SingleRemoteNamingProvider(endpoint, providerUri, authenticationConfiguration, sslContext, env));
         }
-        return new AggregateRemoteNamingProvider(remoteNamingProviders);
+        return remoteNamingProviders.size() == 1 ? remoteNamingProviders.get(0) : new AggregateRemoteNamingProvider(remoteNamingProviders);
     }
 
     private Endpoint getEndpoint(final FastHashtable<String, Object> env) {
