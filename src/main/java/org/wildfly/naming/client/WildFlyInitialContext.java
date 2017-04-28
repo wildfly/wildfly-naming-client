@@ -26,10 +26,11 @@ package org.wildfly.naming.client;
 import java.util.Hashtable;
 
 import javax.naming.Context;
+import javax.naming.Name;
 import javax.naming.NamingException;
-import javax.naming.NoInitialContextException;
 import javax.naming.ldap.InitialLdapContext;
 
+import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 
 /**
@@ -65,8 +66,26 @@ public final class WildFlyInitialContext extends InitialLdapContext {
     protected void init(final Hashtable<?, ?> environment) throws NamingException {
     }
 
+    protected Context getURLOrDefaultInitCtx(final String name) throws NamingException {
+        final Object result = rootContext.lookup(name);
+        if (result instanceof Context) {
+            return (Context) result;
+        } else {
+            throw Messages.log.notContext(name);
+        }
+    }
+
+    protected Context getURLOrDefaultInitCtx(final Name name) throws NamingException {
+        final Object result = rootContext.lookup(name);
+        if (result instanceof Context) {
+            return (Context) result;
+        } else {
+            throw Messages.log.notContext(name);
+        }
+    }
+
     protected Context getDefaultInitCtx() throws NamingException {
-        throw new NoInitialContextException();
+        return rootContext;
     }
     
     public FastHashtable<String, Object> getEnvironment() throws NamingException {

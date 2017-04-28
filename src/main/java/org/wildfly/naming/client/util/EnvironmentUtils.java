@@ -24,8 +24,11 @@ package org.wildfly.naming.client.util;
 
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Hashtable;
+import java.util.Iterator;
+import java.util.List;
 
 import javax.naming.Context;
 import javax.security.auth.x500.X500PrivateCredential;
@@ -146,5 +149,77 @@ public final class EnvironmentUtils {
         return rawRealm instanceof String ? (String) rawRealm : null;
     }
 
+    /**
+     * Get the URL package prefixes defined in the given property name.  If no URL package prefixes are defined in the
+     * given property name, then the default list is returned.  The returned list is mutable.
+     *
+     * @param env the environment (must not be {@code null})
+     * @return the list of package prefixes
+     */
+    public static List<String> getURLPackagePrefixes(Hashtable<String, ?> env) {
+        return getURLPackagePrefixes(env, Context.URL_PKG_PREFIXES);
+    }
 
+    /**
+     * Get the URL package prefixes defined in the given property name.  If no URL package prefixes are defined in the
+     * given property name, then the default list is returned.  The returned list is mutable.
+     *
+     * @param env the environment (must not be {@code null})
+     * @param propertyName the property name to search (must not be {@code null})
+     * @return the list of package prefixes
+     */
+    public static List<String> getURLPackagePrefixes(Hashtable<String, ?> env, String propertyName) {
+        Assert.checkNotNullParam("env", env);
+        Assert.checkNotNullParam("propertyName", propertyName);
+        final ArrayList<String> list = new ArrayList<>();
+        final Object prefixesObj = env.get(propertyName);
+        if (prefixesObj instanceof String) {
+            final String prefixes = (String) prefixesObj;
+            if (! prefixes.isEmpty()) {
+                final String[] split = prefixes.split(":");
+                for (String s : split) {
+                    if (! s.isEmpty()) {
+                        list.add(s);
+                    }
+                }
+            }
+        }
+        list.add("com.sun.jndi.url");
+        return list;
+    }
+
+    /**
+     * Compile the given collection of URL package prefixes into a string.
+     *
+     * @param prefixes the package prefixes (must not be {@code null})
+     * @return the string, or {@code null} if there are no package prefixes (i.e. the corresponding property can be removed)
+     */
+    public static String compileURLPackagePrefixes(Collection<String> prefixes) {
+        Assert.checkNotNullParam("prefixes", prefixes);
+        final Iterator<String> iterator = prefixes.iterator();
+        String firstName;
+        while (iterator.hasNext()) {
+            firstName = iterator.next();
+            if (firstName != null && ! firstName.isEmpty() && ! firstName.equals("com.sun.jndi.url")) {
+                String nextName;
+                while (iterator.hasNext()) {
+                    nextName = iterator.next();
+                    if (nextName != null && ! nextName.isEmpty() && ! nextName.equals("com.sun.jndi.url")) {
+                        StringBuilder b = new StringBuilder();
+                        b.append(firstName);
+                        b.append(':').append(nextName);
+                        while (iterator.hasNext()) {
+                            nextName = iterator.next();
+                            if (nextName != null && ! nextName.isEmpty() && ! nextName.equals("com.sun.jndi.url")) {
+                                b.append(':').append(nextName);
+                            }
+                        }
+                        return b.toString();
+                    }
+                }
+                return firstName;
+            }
+        }
+        return null;
+    }
 }
