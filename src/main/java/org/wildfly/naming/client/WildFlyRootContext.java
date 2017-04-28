@@ -74,9 +74,8 @@ public final class WildFlyRootContext implements Context {
 
     private final FastHashtable<String, Object> environment;
 
-    private final Object loaderLock = new Object();
-    private final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader;
-    private final ServiceLoader<NamingContextFactory> namingContextServiceLoader;
+    private final List<NamingProviderFactory> namingProviderFactories;
+    private final List<NamingContextFactory> namingContextFactories;
 
     private AuthenticationConfiguration stickyAuthenticationConfiguration;
     private SSLContext stickySslContext;
@@ -99,25 +98,30 @@ public final class WildFlyRootContext implements Context {
      */
     public WildFlyRootContext(final FastHashtable<String, Object> environment, final ClassLoader classLoader) {
         this.environment = environment;
-        namingProviderServiceLoader = secureGetServiceLoader(NamingProviderFactory.class, classLoader);
-        namingContextServiceLoader = secureGetServiceLoader(NamingContextFactory.class, classLoader);
+        namingProviderFactories = loadServices(NamingProviderFactory.class, classLoader);
+        namingContextFactories = loadServices(NamingContextFactory.class, classLoader);
     }
 
-    private WildFlyRootContext(final FastHashtable<String, Object> environment, final ServiceLoader<NamingProviderFactory> namingProviderServiceLoader, final ServiceLoader<NamingContextFactory> namingContextServiceLoader) {
+    static <T> List<T> loadServices(Class<T> type, ClassLoader classLoader) {
+        return doPrivileged((PrivilegedAction<List<T>>) () -> {
+            ArrayList<T> list = new ArrayList<>();
+            Iterator<T> iterator = ServiceLoader.load(type, classLoader).iterator();
+            for (;;) try {
+                if (! iterator.hasNext()) break;
+                final T contextFactory = iterator.next();
+                list.add(contextFactory);
+            } catch (ServiceConfigurationError error) {
+                Messages.log.serviceConfigFailed(error);
+            }
+            list.trimToSize();
+            return list;
+        });
+    }
+
+    private WildFlyRootContext(final FastHashtable<String, Object> environment, final List<NamingProviderFactory> namingProviderFactories, final List<NamingContextFactory> namingContextFactories) {
         this.environment = environment;
-        this.namingProviderServiceLoader = namingProviderServiceLoader;
-        this.namingContextServiceLoader = namingContextServiceLoader;
-    }
-
-    private static <T> ServiceLoader<T> secureGetServiceLoader(final Class<T> factory, final ClassLoader classLoader) {
-        final ServiceLoader<T> serviceLoader;
-        final SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            serviceLoader = doPrivileged((PrivilegedAction<ServiceLoader<T>>) () -> ServiceLoader.load(factory, classLoader));
-        } else {
-            serviceLoader = ServiceLoader.load(factory, classLoader);
-        }
-        return serviceLoader;
+        this.namingProviderFactories = namingProviderFactories;
+        this.namingContextFactories = namingContextFactories;
     }
 
     private static ClassLoader secureGetContextClassLoader() {
@@ -140,7 +144,7 @@ public final class WildFlyRootContext implements Context {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(getNameParser().parse(name));
         if (reparsedName.isEmpty()) {
-            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+            return new WildFlyRootContext(environment.clone(), namingProviderFactories, namingContextFactories);
         }
         ContextResult result = getProviderContext(reparsedName.getUrlScheme());
         if(result.oldStyle) {
@@ -155,7 +159,7 @@ public final class WildFlyRootContext implements Context {
         Assert.checkNotNullParam("name", name);
         final ReparsedName reparsedName = reparse(name);
         if (reparsedName.isEmpty()) {
-            return new WildFlyRootContext(environment.clone(), namingProviderServiceLoader, namingContextServiceLoader);
+            return new WildFlyRootContext(environment.clone(), namingProviderFactories, namingContextFactories);
         }
         ContextResult result = getProviderContext(reparsedName.getUrlScheme());
         if(result.oldStyle) {
@@ -443,16 +447,9 @@ public final class WildFlyRootContext implements Context {
         final List<URI> providerUris = getProviderUris();
         if (providerUris == null || providerUris.stream().map(URI::getScheme).allMatch(scheme -> scheme == null || scheme.isEmpty())) {
             // search for context factories which support a null provider
-            synchronized (loaderLock) {
-                final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
-                for (;;) try {
-                    if (! contextIterator.hasNext()) break;
-                    final NamingContextFactory contextFactory = contextIterator.next();
-                    if (contextFactory.supportsUriScheme(null, nameScheme)) {
-                        return new ContextResult(contextFactory.createRootContext(null, nameScheme, getEnvironment()), false);
-                    }
-                } catch (ServiceConfigurationError error) {
-                    Messages.log.serviceConfigFailed(error);
+            for (NamingContextFactory contextFactory : namingContextFactories) {
+                if (contextFactory.supportsUriScheme(null, nameScheme)) {
+                    return new ContextResult(contextFactory.createRootContext(null, nameScheme, getEnvironment()), false);
                 }
             }
             if (nameScheme != null) {
@@ -463,47 +460,34 @@ public final class WildFlyRootContext implements Context {
                 }
             }
             // by default, support an empty local root context
-            return  new ContextResult(NamingUtils.emptyContext(getEnvironment()), false);
+            return new ContextResult(NamingUtils.emptyContext(getEnvironment()), false);
         }
         // get active naming providers
-        final ServiceLoader<NamingProviderFactory> providerLoader = this.namingProviderServiceLoader;
-        synchronized (providerLoader) {
-            final Iterator<NamingProviderFactory> providerIterator = providerLoader.iterator();
-            for (;;) try {
-                if (! providerIterator.hasNext()) break;
-                final NamingProviderFactory providerFactory = providerIterator.next();
-                boolean supportsUriSchemes = true;
-                for (URI providerUri : providerUris) {
-                    if (! providerFactory.supportsUriScheme(providerUri.getScheme(), getEnvironment())) {
-                        supportsUriSchemes = false;
-                        break;
-                    }
-                }
-                if (supportsUriSchemes) {
-                    final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerUris.toArray(new URI[providerUris.size()]));
-                    final Iterator<NamingContextFactory> contextIterator = namingContextServiceLoader.iterator();
-                    for (;;) try {
-                        if (! contextIterator.hasNext()) break;
-                        final NamingContextFactory contextFactory = contextIterator.next();
-                        if (contextFactory.supportsUriScheme(provider, nameScheme)) {
-                            return  new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment()), false);
-                        }
-                    } catch (ServiceConfigurationError error) {
-                        Messages.log.serviceConfigFailed(error);
-                    }
-                }
-            } catch (ServiceConfigurationError error) {
-                Messages.log.serviceConfigFailed(error);
-            }
-            if (nameScheme != null) {
-                // there is a name scheme to resolve; try the old-fashioned way
-                final Context context = NamingManager.getURLContext(nameScheme, environment);
-                if (context != null) {
-                    return  new ContextResult(context, true);
+        for (NamingProviderFactory providerFactory : namingProviderFactories) {
+            boolean supportsUriSchemes = true;
+            for (URI providerUri : providerUris) {
+                if (! providerFactory.supportsUriScheme(providerUri.getScheme(), getEnvironment())) {
+                    supportsUriSchemes = false;
+                    break;
                 }
             }
-            throw Messages.log.noProviderForUri(nameScheme);
+            if (supportsUriSchemes) {
+                final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerUris.toArray(new URI[providerUris.size()]));
+                for (NamingContextFactory contextFactory : namingContextFactories) {
+                    if (contextFactory.supportsUriScheme(provider, nameScheme)) {
+                        return new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment()), false);
+                    }
+                }
+            }
         }
+        if (nameScheme != null) {
+            // there is a name scheme to resolve; try the old-fashioned way
+            final Context context = NamingManager.getURLContext(nameScheme, environment);
+            if (context != null) {
+                return new ContextResult(context, true);
+            }
+        }
+        throw Messages.log.noProviderForUri(nameScheme);
     }
 
     /**
