@@ -26,9 +26,9 @@ package org.wildfly.naming.client;
 import java.util.Hashtable;
 
 import javax.naming.Context;
-import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.naming.NoInitialContextException;
+import javax.naming.ldap.InitialLdapContext;
 
 import org.wildfly.naming.client.util.FastHashtable;
 
@@ -38,7 +38,7 @@ import org.wildfly.naming.client.util.FastHashtable;
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
-public final class WildFlyInitialContext extends InitialContext {
+public final class WildFlyInitialContext extends InitialLdapContext {
 
     private final WildFlyRootContext rootContext;
 
