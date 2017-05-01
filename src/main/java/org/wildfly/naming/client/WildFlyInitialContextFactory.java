@@ -55,6 +55,6 @@ public final class WildFlyInitialContextFactory implements InitialContextFactory
      */
     @SuppressWarnings({"rawtypes", "unchecked"})
     public Context getInitialContext(final Hashtable<?, ?> environment) throws NamingException {
-        return new WildFlyInitialContext(new FastHashtable<>((Map<String, Object>) (Map) environment));
+        return new WildFlyRootContext(new FastHashtable<>((Map<String, Object>) (Map) environment));
     }
 }
