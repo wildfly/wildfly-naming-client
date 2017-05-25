@@ -48,15 +48,18 @@ import javax.naming.NameClassPair;
 import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
+import javax.naming.directory.Attributes;
+import javax.naming.directory.DirContext;
+import javax.naming.directory.ModificationItem;
+import javax.naming.directory.SearchControls;
+import javax.naming.directory.SearchResult;
 import javax.naming.spi.NamingManager;
-import javax.net.ssl.SSLContext;
 
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
-import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.xnio.Options;
 
 /**
@@ -66,7 +69,7 @@ import org.xnio.Options;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  * @author <a href="mailto:tadamski@redhat.com">Tomasz Adamski</a>
  */
-public final class WildFlyRootContext implements Context {
+public final class WildFlyRootContext implements DirContext {
     static {
         Version.getVersion();
     }
@@ -76,9 +79,6 @@ public final class WildFlyRootContext implements Context {
 
     private final List<NamingProviderFactory> namingProviderFactories;
     private final List<NamingContextFactory> namingContextFactories;
-
-    private AuthenticationConfiguration stickyAuthenticationConfiguration;
-    private SSLContext stickySslContext;
 
     /**
      * Construct a new instance, searching the thread context class loader for providers.  If no context class loader is
@@ -394,6 +394,319 @@ public final class WildFlyRootContext implements Context {
             return result.context.lookupLink(name);
         } else {
             return result.context.lookupLink(reparsedName.getName());
+        }
+    }
+
+
+    @Override
+    public Attributes getAttributes(Name name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getAttributes(name);
+        } else {
+            return ((DirContext)result.context).getAttributes(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public Attributes getAttributes(String name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getAttributes(name);
+        } else {
+            return ((DirContext)result.context).getAttributes(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public Attributes getAttributes(Name name, String[] attrIds) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getAttributes(name, attrIds);
+        } else {
+            return ((DirContext)result.context).getAttributes(reparsedName.getName(), attrIds);
+        }
+    }
+
+    @Override
+    public Attributes getAttributes(String name, String[] attrIds) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getAttributes(name, attrIds);
+        } else {
+            return ((DirContext)result.context).getAttributes(reparsedName.getName(), attrIds);
+        }
+    }
+
+    @Override
+    public void modifyAttributes(Name name, int mod_op, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).modifyAttributes(name, mod_op, attrs);
+        } else {
+            ((DirContext)result.context).modifyAttributes(reparsedName.getName(), mod_op, attrs);
+        }
+    }
+
+    @Override
+    public void modifyAttributes(String name, int mod_op, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).modifyAttributes(name, mod_op, attrs);
+        } else {
+            ((DirContext)result.context).modifyAttributes(reparsedName.getName(), mod_op, attrs);
+        }
+    }
+
+    @Override
+    public void modifyAttributes(Name name, ModificationItem[] mods) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).modifyAttributes(name, mods);
+        } else {
+            ((DirContext)result.context).modifyAttributes(reparsedName.getName(), mods);
+        }
+    }
+
+    @Override
+    public void modifyAttributes(String name, ModificationItem[] mods) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).modifyAttributes(name, mods);
+        } else {
+            ((DirContext)result.context).modifyAttributes(reparsedName.getName(), mods);
+        }
+    }
+
+    @Override
+    public void bind(Name name, Object obj, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).bind(name, obj, attrs);
+        } else {
+            ((DirContext)result.context).bind(reparsedName.getName(), obj, attrs);
+        }
+    }
+
+    @Override
+    public void bind(String name, Object obj, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).bind(name, obj, attrs);
+        } else {
+            ((DirContext)result.context).bind(reparsedName.getName(), obj, attrs);
+        }
+    }
+
+    @Override
+    public void rebind(Name name, Object obj, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).rebind(name, obj, attrs);
+        } else {
+            ((DirContext)result.context).rebind(reparsedName.getName(), obj, attrs);
+        }
+    }
+
+    @Override
+    public void rebind(String name, Object obj, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            ((DirContext)result.context).rebind(name, obj, attrs);
+        } else {
+            ((DirContext)result.context).rebind(reparsedName.getName(), obj, attrs);
+        }
+    }
+
+    @Override
+    public DirContext createSubcontext(Name name, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).createSubcontext(name, attrs);
+        } else {
+            return ((DirContext)result.context).createSubcontext(reparsedName.getName(), attrs);
+        }
+    }
+
+    @Override
+    public DirContext createSubcontext(String name, Attributes attrs) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).createSubcontext(name, attrs);
+        } else {
+            return ((DirContext)result.context).createSubcontext(reparsedName.getName(), attrs);
+        }
+    }
+
+    @Override
+    public DirContext getSchema(Name name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getSchema(name);
+        } else {
+            return ((DirContext)result.context).getSchema(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public DirContext getSchema(String name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getSchema(name);
+        } else {
+            return ((DirContext)result.context).getSchema(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public DirContext getSchemaClassDefinition(Name name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getSchemaClassDefinition(name);
+        } else {
+            return ((DirContext)result.context).getSchemaClassDefinition(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public DirContext getSchemaClassDefinition(String name) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).getSchemaClassDefinition(name);
+        } else {
+            return ((DirContext)result.context).getSchemaClassDefinition(reparsedName.getName());
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(Name name, Attributes matchingAttributes, String[] attributesToReturn) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, matchingAttributes, attributesToReturn);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), matchingAttributes, attributesToReturn);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(String name, Attributes matchingAttributes, String[] attributesToReturn) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, matchingAttributes, attributesToReturn);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), matchingAttributes, attributesToReturn);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(Name name, Attributes matchingAttributes) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, matchingAttributes);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), matchingAttributes);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(String name, Attributes matchingAttributes) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, matchingAttributes);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), matchingAttributes);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(Name name, String filter, SearchControls cons) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, filter, cons);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), filter, cons);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(String name, String filter, SearchControls cons) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, filter, cons);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), filter, cons);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(Name name, String filterExpr, Object[] filterArgs, SearchControls cons) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(name);
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, filterExpr, filterArgs, cons);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), filterExpr, filterArgs, cons);
+        }
+    }
+
+    @Override
+    public NamingEnumeration<SearchResult> search(String name, String filterExpr, Object[] filterArgs, SearchControls cons) throws NamingException {
+        Assert.checkNotNullParam("name", name);
+        final ReparsedName reparsedName = reparse(getNameParser().parse(name));
+        ContextResult result = getProviderContext(reparsedName.getUrlScheme());
+        if(result.oldStyle) {
+            return ((DirContext)result.context).search(name, filterExpr, filterArgs, cons);
+        } else {
+            return ((DirContext)result.context).search(reparsedName.getName(), filterExpr, filterArgs, cons);
         }
     }
 
