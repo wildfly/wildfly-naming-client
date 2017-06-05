@@ -54,6 +54,7 @@ import javax.naming.spi.NamingManager;
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
+import org.wildfly.naming.client.util.EnvironmentUtils;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
 import org.xnio.Options;
@@ -771,12 +772,15 @@ public final class WildFlyRootContext implements DirContext {
             // by default, support an empty local root context
             return new ContextResult(NamingUtils.emptyContext(getEnvironment()), false);
         }
+        String uriScheme = nameScheme;
+        boolean supportsUriSchemes = false;
         // get active naming providers
         for (NamingProviderFactory providerFactory : namingProviderFactories) {
-            boolean supportsUriSchemes = true;
+            supportsUriSchemes = true;
             for (URI providerUri : providerUris) {
                 if (! providerFactory.supportsUriScheme(providerUri.getScheme(), getEnvironment())) {
                     supportsUriSchemes = false;
+                    uriScheme = providerUri.getScheme();
                     break;
                 }
             }
@@ -796,6 +800,11 @@ public final class WildFlyRootContext implements DirContext {
                 return new ContextResult(context, true);
             }
         }
+
+        if (!supportsUriSchemes) {
+            throw Messages.log.invalidURLSchemeName(uriScheme);
+        }
+
         throw Messages.log.noProviderForUri(nameScheme);
     }
 
@@ -827,6 +836,10 @@ public final class WildFlyRootContext implements DirContext {
         // fall back to EJB connection properties
         final String connectionNameList = ((String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "")).trim();
         if (! connectionNameList.isEmpty()) {
+
+            // Cleanup Context.URL_PKG_PREFIXES in order to avoid possible side effects due to legacy package prefix
+            getEnvironment().remove(Context.URL_PKG_PREFIXES);
+
             Messages.log.deprecatedProperties();
             final String[] names = connectionNameList.split("\\s*,\\s*");
             final List<URI> uriList = new ArrayList<>(names.length);
