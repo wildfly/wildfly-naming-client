@@ -69,20 +69,6 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
     public RemoteNamingProviderFactory() {
     }
 
-    /**
-     * An environment attribute indicating that a separate Remoting connection should be used for this initial context.  Normally,
-     * it is preferable to use managed connections, but in some special circumstances it is expedient to create an
-     * unmanaged, separate connection.  Note that using unmanaged connections can result in additional resource consumption
-     * and should be avoided in most situations.
-     * <p>
-     * Separate connections use the captured authentication context for authentication decisions unless a principal or
-     * authentication configuration is set in the environment.
-     * <p>
-     * A separate connection's lifespan is bound to the lifespan of the {@code InitialContext} that it belongs to.  It
-     * <em>must</em> be closed to prevent possible resource exhaustion.
-     */
-    public static final String USE_SEPARATE_CONNECTION = "org.wildfly.naming.client.remote.use-separate-connection";
-
     private static final String CONNECT_OPTIONS_PREFIX = "jboss.naming.client.connect.options.";
     private static final String NAMING_CLIENT_PREFIX = "jboss.naming.client.";
     private static final OptionMap DEFAULT_CONNECTION_CREATION_OPTIONS = OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, false);
@@ -108,13 +94,6 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         final String realm = getProperty(properties, REALM_KEY, null, true);
         final OptionMap configuredConnectOptions = getOptionMapFromProperties(properties, CONNECT_OPTIONS_PREFIX, classLoader);
         OptionMap connectOptions = mergeWithDefaultOptionMap(DEFAULT_CONNECTION_CREATION_OPTIONS, configuredConnectOptions);
-
-        /*
-         * If this flag is set, then we'll use the "operate" credentials for both connection *and* operation.  If not,
-         * we won't touch the connect configuration at all; Remoting may use a shared or separate connection and we won't
-         * know the difference.
-         */
-        boolean useSeparateConnection = getBooleanValueFromProperties(properties, USE_SEPARATE_CONNECTION, false);
 
         CallbackHandler callbackHandler = null;
         String decodedPassword = null;
@@ -146,10 +125,10 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
         final AuthenticationContextConfigurationClient client = AUTH_CONFIGURATION_CLIENT;
 
         for (URI providerUri : providerUris) {
-            AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss", useSeparateConnection ? null : "operate");
+            AuthenticationConfiguration authenticationConfiguration = client.getAuthenticationConfiguration(providerUri, captured, -1, "jndi", "jboss");
             final SSLContext sslContext;
             try {
-                sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss", "connect");
+                sslContext = client.getSSLContext(providerUri, captured, "jndi", "jboss");
             } catch (GeneralSecurityException e) {
                 throw Messages.log.failedToConfigureSslContext(e);
             }
