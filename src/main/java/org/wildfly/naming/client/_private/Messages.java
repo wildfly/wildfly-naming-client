@@ -220,4 +220,7 @@ public interface Messages extends BasicLogger {
     @LogMessage(level = INFO)
     @Message(id = 49, value = "Usage of the legacy \"remote.connections\" property is deprecated; please use javax.naming.Context#PROVIDER_URL instead")
     void deprecatedProperties();
+
+    @Message(id = 50, value = "Invalid location given")
+    IllegalArgumentException invalidLocation();
 }
