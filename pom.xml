@@ -35,7 +35,7 @@
 
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client</artifactId>
-    <version>1.0.0.CR2</version>
+    <version>1.0.0.CR3-SNAPSHOT</version>
 
     <name>WildFly Naming Client</name>
 
