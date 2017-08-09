@@ -26,8 +26,10 @@ import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 import org.jboss.marshalling.Marshaller;
+import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.marshalling.MarshallingConfiguration;
+import org.jboss.marshalling.OutputStreamByteOutput;
 import org.jboss.marshalling.Unmarshaller;
 import org.jboss.remoting3.MessageInputStream;
 import org.jboss.remoting3.MessageOutputStream;
@@ -42,6 +44,8 @@ final class ProtocolUtils {
 
     public static final String NAMING = "naming";
     public static final byte[] NAMING_BYTES = { 'n', 'a', 'm', 'i', 'n', 'g' };
+
+    private static MarshallerFactory riverMarshallerFactory = Marshalling.getProvidedMarshallerFactory("river");
 
     private ProtocolUtils() {
     }
@@ -59,14 +63,21 @@ final class ProtocolUtils {
     }
 
     public static Unmarshaller createUnmarshaller(MessageInputStream is, MarshallingConfiguration configuration) throws IOException {
-        final Unmarshaller unmarshaller = Marshalling.getProvidedMarshallerFactory("river").createUnmarshaller(configuration);
+        final Unmarshaller unmarshaller = riverMarshallerFactory.createUnmarshaller(configuration);
         unmarshaller.start(Marshalling.createByteInput(is));
         return unmarshaller;
     }
 
     public static Marshaller createMarshaller(MessageOutputStream os, MarshallingConfiguration configuration) throws IOException {
-        final Marshaller marshaller = Marshalling.getProvidedMarshallerFactory("river").createMarshaller(configuration);
-        marshaller.start(Marshalling.createByteOutput(os));
+        final Marshaller marshaller = riverMarshallerFactory.createMarshaller(configuration);
+        marshaller.start(new OutputStreamByteOutput(os) {
+
+            @Override
+            public void flush() throws IOException {
+                //ignore flushes, all they do is wreck performance as you get a double flush when closing the marshaller
+                //which results in two network packets being sent
+            }
+        });
         return marshaller;
     }
 
