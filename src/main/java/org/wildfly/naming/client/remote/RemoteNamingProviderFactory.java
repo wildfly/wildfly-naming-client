@@ -50,6 +50,8 @@ import org.wildfly.naming.client.NamingProviderFactory;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
+import org.wildfly.security.auth.client.AuthenticationContext;
+import org.wildfly.security.auth.client.AuthenticationContextConfigurationClient;
 import org.wildfly.security.sasl.localuser.LocalUserClient;
 import org.wildfly.security.util.CodePointIterator;
 import org.xnio.Option;
@@ -69,6 +71,7 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
     private static final String CONNECT_OPTIONS_PREFIX = "jboss.naming.client.connect.options.";
     private static final String NAMING_CLIENT_PREFIX = "jboss.naming.client.";
     private static final OptionMap DEFAULT_CONNECTION_CREATION_OPTIONS = OptionMap.create(Options.SASL_POLICY_NOANONYMOUS, false);
+    private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
 
     public boolean supportsUriScheme(final String providerScheme, final FastHashtable<String, Object> env) {
         final Endpoint endpoint = getEndpoint(env);
@@ -117,8 +120,9 @@ public final class RemoteNamingProviderFactory implements NamingProviderFactory 
 
         List<Location> locationList = new ArrayList<>(providerUris.length);
 
+        AuthenticationContext authenticationContext = AuthenticationContext.captureCurrent();
         for (URI providerUri : providerUris) {
-            AuthenticationConfiguration authenticationConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, AuthenticationConfiguration.empty());
+            AuthenticationConfiguration authenticationConfiguration = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connectOptions, CLIENT.getAuthenticationConfiguration(providerUri, authenticationContext));
 
             if (callbackHandler != null) {
                 authenticationConfiguration = authenticationConfiguration.useCallbackHandler(callbackHandler);
