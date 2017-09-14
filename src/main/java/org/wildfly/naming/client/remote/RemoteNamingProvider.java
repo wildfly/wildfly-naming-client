@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.security.PrivilegedAction;
-import java.util.List;
+import java.util.function.Supplier;
 
 import javax.naming.NamingException;
 import javax.net.ssl.SSLContext;
@@ -33,6 +33,7 @@ import org.jboss.remoting3.ConnectionPeerIdentity;
 import org.jboss.remoting3.Endpoint;
 import org.wildfly.common.Assert;
 import org.wildfly.naming.client.NamingProvider;
+import org.wildfly.naming.client.ProviderEnvironment;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.AuthenticationException;
@@ -52,11 +53,11 @@ public final class RemoteNamingProvider implements NamingProvider {
 
     private static final AuthenticationContextConfigurationClient CLIENT = doPrivileged(AuthenticationContextConfigurationClient.ACTION);
     private final Endpoint endpoint;
-    private final List<Location> locationsList;
+    private final ProviderEnvironment providerEnvironment;
 
-    RemoteNamingProvider(final Endpoint endpoint, final List<Location> locationsList, final FastHashtable<String, Object> env) {
+    RemoteNamingProvider(final Endpoint endpoint, final ProviderEnvironment providerEnvironment, final FastHashtable<String, Object> env) {
         this.endpoint = endpoint;
-        this.locationsList = locationsList;
+        this.providerEnvironment = providerEnvironment;
     }
 
     /**
@@ -68,8 +69,8 @@ public final class RemoteNamingProvider implements NamingProvider {
         return endpoint;
     }
 
-    public List<Location> getLocations() {
-        return locationsList;
+    public ProviderEnvironment getProviderEnvironment() {
+        return providerEnvironment;
     }
 
     /**
@@ -89,11 +90,11 @@ public final class RemoteNamingProvider implements NamingProvider {
      * will not actually be established until this method is called.  The resultant connection should be closed and
      * discarded in the event of an error, in order to facilitate automatic reconnection.
      *
-     * @param location a location from {@link #getLocations()} (must not be {@code null})
+     * @param location a location from {@link ProviderEnvironment#getProviderUris()} (must not be {@code null})
      * @return the connection peer identity (not {@code null})
      * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
      */
-    public ConnectionPeerIdentity getPeerIdentityForNaming(final Location location) throws NamingException {
+    public ConnectionPeerIdentity getPeerIdentityForNaming(final URI location) throws NamingException {
         Assert.checkNotNullParam("location", location);
         try {
             return getPeerIdentity(location);
@@ -109,12 +110,12 @@ public final class RemoteNamingProvider implements NamingProvider {
      * will not actually be established until this method is called.  The resultant connection should be closed and
      * discarded in the event of an error, in order to facilitate automatic reconnection.
      *
-     * @param location a location from {@link #getLocations()} (must not be {@code null})
+     * @param location a location from {@link ProviderEnvironment#getProviderUris()} (must not be {@code null})
      * @return the connection peer identity (not {@code null})
      * @throws AuthenticationException if authenticating or re-authenticating the peer failed
      * @throws IOException if connecting the peer failed
      */
-    public ConnectionPeerIdentity getPeerIdentity(Location location) throws IOException {
+    public ConnectionPeerIdentity getPeerIdentity(final URI location) throws IOException {
         Assert.checkNotNullParam("location", location);
         return getFuturePeerIdentity(location).get();
     }
@@ -124,32 +125,23 @@ public final class RemoteNamingProvider implements NamingProvider {
      * will not actually be established until this method is called.  The resultant connection should be closed and
      * discarded in the event of an error, in order to facilitate automatic reconnection.
      *
+     * @param location a location from {@link ProviderEnvironment#getProviderUris()} (must not be {@code null})
      * @return the future connection peer identity (not {@code null})
      */
-    public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity(Location location) {
+    public IoFuture<ConnectionPeerIdentity> getFuturePeerIdentity(final URI location) {
         return doPrivileged((PrivilegedAction<IoFuture<ConnectionPeerIdentity>>) () -> getFuturePeerIdentityPrivileged(location));
     }
 
-    private IoFuture<ConnectionPeerIdentity> getFuturePeerIdentityPrivileged(Location location) {
-        final SSLContext sslContext = location.getSSLContext();
-        final URI providerUri = location.getUri();
-        final AuthenticationConfiguration authenticationConfiguration = location.getAuthenticationConfiguration();
-        final SSLContext realSSLContext;
-        if (sslContext == null) {
-            try {
-                realSSLContext = CLIENT.getSSLContext(providerUri, AuthenticationContext.captureCurrent(), "jndi", "jboss");
-            } catch (GeneralSecurityException e) {
-                return new FailedIoFuture<>(new IOException(e));
-            }
-        } else {
-            realSSLContext = sslContext;
+    private IoFuture<ConnectionPeerIdentity> getFuturePeerIdentityPrivileged(final URI location) {
+        final Supplier<AuthenticationContext> supplier = providerEnvironment.getAuthenticationContextSupplier();
+        final AuthenticationContext context = supplier.get();
+        final SSLContext sslContext;
+        try {
+            sslContext = CLIENT.getSSLContext(location, context, "jndi", "jboss");
+        } catch (GeneralSecurityException e) {
+            return new FailedIoFuture<>(new IOException(e));
         }
-        final AuthenticationConfiguration realConf;
-        if (authenticationConfiguration == null) {
-            realConf = CLIENT.getAuthenticationConfiguration(providerUri, AuthenticationContext.captureCurrent(), -1, "jndi", "jboss");
-        } else {
-            realConf = authenticationConfiguration;
-        }
-        return endpoint.getConnectedIdentity(providerUri, realSSLContext, realConf);
+        final AuthenticationConfiguration authenticationConfiguration = CLIENT.getAuthenticationConfiguration(location, context, -1, "jndi", "jboss");
+        return endpoint.getConnectedIdentity(location, sslContext, authenticationConfiguration);
     }
 }

@@ -18,9 +18,6 @@
 
 package org.wildfly.naming.client;
 
-import java.net.URI;
-
-import javax.naming.Context;
 import javax.naming.NamingException;
 
 import org.wildfly.naming.client.util.FastHashtable;
@@ -44,9 +41,9 @@ public interface NamingProviderFactory {
      * Create the naming provider instance for a provider URI.
      *
      * @param env a copy of the environment which may be consumed directly by the provider (not {@code null})
-     * @param providerUris the URIs from the {@link Context#PROVIDER_URL} environment property, or {@code null} if none were given
+     * @param providerEnvironment the provider environment (not {@code null})
      * @return the root context (must not be {@code null})
      * @throws NamingException if the root context creation failed for some reason
      */
-    NamingProvider createProvider(FastHashtable<String, Object> env, URI... providerUris) throws NamingException;
+    NamingProvider createProvider(FastHashtable<String, Object> env, ProviderEnvironment providerEnvironment) throws NamingException;
 }
