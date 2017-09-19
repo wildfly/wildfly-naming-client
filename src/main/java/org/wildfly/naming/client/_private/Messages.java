@@ -23,6 +23,8 @@ import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ServiceConfigurationError;
 
 import javax.naming.CommunicationException;
@@ -223,4 +225,18 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 50, value = "Invalid location given")
     IllegalArgumentException invalidLocation();
+
+    @LogMessage(level = WARN)
+    @Message(id = 51, value = "Provider URLs already given via standard mechanism; ignoring legacy property-based connection configuration")
+    void ignoringLegacyProperties();
+
+    @Message(id = 52, value = "Invalid value given for property \"%s\": \"%s\" is not numeric")
+    ConfigurationException invalidNumericProperty(@Cause Throwable e, String propertyName, String resultStr);
+
+    @Message(id = 53, value = "Failed to synthesize a valid provider URL")
+    ConfigurationException invalidProviderGenerated(@Cause Throwable e);
+
+    @LogMessage(level = WARN)
+    @Message(id = 54, value = "Ignoring duplicate destination URI \"%s\"")
+    void ignoringDuplicateDestination(URI uri);
 }

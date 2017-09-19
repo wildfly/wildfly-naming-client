@@ -19,15 +19,8 @@
 package org.wildfly.naming.client;
 
 import static java.security.AccessController.doPrivileged;
-import static org.wildfly.naming.client.util.EnvironmentUtils.CONNECT_OPTIONS;
-import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_HOST_KEY;
-import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_PORT_KEY;
-import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTIONS;
-import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PREFIX;
-import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_REMOTE_CONNECTION_PROVIDER_PREFIX;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -52,12 +45,9 @@ import javax.naming.directory.SearchResult;
 import javax.naming.spi.NamingManager;
 
 import org.wildfly.common.Assert;
-import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
-import org.wildfly.naming.client.util.EnvironmentUtils;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.naming.client.util.NamingUtils;
-import org.xnio.Options;
 
 /**
  * A root context which locates providers based on the {@link Context#PROVIDER_URL} environment property as well as any
@@ -74,6 +64,8 @@ public final class WildFlyRootContext implements DirContext {
 
     private final FastHashtable<String, Object> environment;
 
+    private final ProviderEnvironment providerEnvironment;
+
     private final List<NamingProviderFactory> namingProviderFactories;
     private final List<NamingContextFactory> namingContextFactories;
 
@@ -83,7 +75,7 @@ public final class WildFlyRootContext implements DirContext {
      *
      * @param environment the environment to use (not copied)
      */
-    public WildFlyRootContext(final FastHashtable<String, Object> environment) {
+    public WildFlyRootContext(final FastHashtable<String, Object> environment) throws NamingException {
         this(environment, secureGetContextClassLoader());
     }
 
@@ -93,10 +85,8 @@ public final class WildFlyRootContext implements DirContext {
      * @param environment the environment to use (not copied)
      * @param classLoader the class loader to search for providers
      */
-    public WildFlyRootContext(final FastHashtable<String, Object> environment, final ClassLoader classLoader) {
-        this.environment = environment;
-        namingProviderFactories = loadServices(NamingProviderFactory.class, classLoader);
-        namingContextFactories = loadServices(NamingContextFactory.class, classLoader);
+    public WildFlyRootContext(final FastHashtable<String, Object> environment, final ClassLoader classLoader) throws NamingException {
+        this(environment, loadServices(NamingProviderFactory.class, classLoader), loadServices(NamingContextFactory.class, classLoader));
     }
 
     static <T> List<T> loadServices(Class<T> type, ClassLoader classLoader) {
@@ -115,10 +105,14 @@ public final class WildFlyRootContext implements DirContext {
         });
     }
 
-    private WildFlyRootContext(final FastHashtable<String, Object> environment, final List<NamingProviderFactory> namingProviderFactories, final List<NamingContextFactory> namingContextFactories) {
+    private WildFlyRootContext(final FastHashtable<String, Object> environment, final List<NamingProviderFactory> namingProviderFactories, final List<NamingContextFactory> namingContextFactories) throws NamingException {
         this.environment = environment;
         this.namingProviderFactories = namingProviderFactories;
         this.namingContextFactories = namingContextFactories;
+        // build the environment
+        ProviderEnvironment.Builder builder = new ProviderEnvironment.Builder();
+        builder.populateFromEnvironment(environment);
+        providerEnvironment = builder.build();
     }
 
     private static ClassLoader secureGetContextClassLoader() {
@@ -753,9 +747,18 @@ public final class WildFlyRootContext implements DirContext {
     }
 
     private ContextResult getProviderContext(final String nameScheme) throws NamingException {
+
         // get provider scheme
-        final List<URI> providerUris = getProviderUris();
-        if (providerUris == null || providerUris.stream().map(URI::getScheme).allMatch(scheme -> scheme == null || scheme.isEmpty())) {
+        final List<URI> providerUris = providerEnvironment.getProviderUris();
+        boolean allEmpty = true;
+        for (URI uri : providerUris) {
+            final String scheme = uri.getScheme();
+            if (scheme != null && ! scheme.isEmpty()) {
+                allEmpty = false;
+                break;
+            }
+        }
+        if (allEmpty) {
             // search for context factories which support a null provider
             for (NamingContextFactory contextFactory : namingContextFactories) {
                 if (contextFactory.supportsUriScheme(null, nameScheme)) {
@@ -785,7 +788,7 @@ public final class WildFlyRootContext implements DirContext {
                 }
             }
             if (supportsUriSchemes) {
-                final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerUris.toArray(new URI[providerUris.size()]));
+                final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerEnvironment);
                 for (NamingContextFactory contextFactory : namingContextFactories) {
                     if (contextFactory.supportsUriScheme(provider, nameScheme)) {
                         return new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment()), false);
@@ -806,83 +809,6 @@ public final class WildFlyRootContext implements DirContext {
         }
 
         throw Messages.log.noProviderForUri(nameScheme);
-    }
-
-    /**
-     * Get the provider URI list either from the context property or from the old EJB remote connections configuration.
-     *
-     * @return the provider URI list
-     */
-    private List<URI> getProviderUris() throws NamingException {
-        final FastHashtable<String, Object> env = getEnvironment();
-        Object urlString = env.get(Context.PROVIDER_URL);
-        if (urlString != null) {
-            String providerUrl = Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
-            if (! providerUrl.isEmpty()) {
-                final String[] urls = providerUrl.split(",");
-                final List<URI> providerUris = new ArrayList<>(urls.length);
-                for (String url : urls) {
-                    URI providerUri;
-                    try {
-                        providerUri = new URI(url.trim());
-                    } catch (URISyntaxException e) {
-                        throw Messages.log.invalidProviderUri(e, url);
-                    }
-                    providerUris.add(providerUri);
-                }
-                return providerUris;
-            }
-        }
-        // fall back to EJB connection properties
-        final String connectionNameList = ((String) env.getOrDefault(EJB_REMOTE_CONNECTIONS, "")).trim();
-        if (! connectionNameList.isEmpty()) {
-
-            // Cleanup Context.URL_PKG_PREFIXES in order to avoid possible side effects due to legacy package prefix
-            getEnvironment().remove(Context.URL_PKG_PREFIXES);
-
-            Messages.log.deprecatedProperties();
-            final String[] names = connectionNameList.split("\\s*,\\s*");
-            final List<URI> uriList = new ArrayList<>(names.length);
-            for (String connectionName : names) {
-                connectionName = connectionName.trim();
-                // attempt to determine the PROVIDER_URL from the EJB HOST and PORT properties for each
-                final String ejbPrefix = EJB_REMOTE_CONNECTION_PREFIX + connectionName + ".";
-                final String host = getStringProperty(ejbPrefix + EJB_HOST_KEY, env);
-                final String port = getStringProperty(ejbPrefix + EJB_PORT_KEY, env);
-                String sslEnabled = getStringProperty(ejbPrefix + CONNECT_OPTIONS + Options.SSL_ENABLED, env);
-                if (sslEnabled == null) {
-                    sslEnabled = getStringProperty(EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, env);
-                }
-                String protocol = getStringProperty(ejbPrefix + "protocol", env);
-                if (protocol == null) {
-                    if (Boolean.parseBoolean(sslEnabled)) {
-                        protocol = "remote+https";
-                    } else {
-                        protocol = "remote+http";
-                    }
-                }
-                if (host != null && port != null) {
-                    String realHost = Expression.compile(host, Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
-                    if (realHost.indexOf(':') != - 1 && ! realHost.startsWith("[") && ! realHost.endsWith("]")) {
-                        // probably IPv6?
-                        realHost = "[" + realHost + "]";
-                    }
-                    try {
-                        uriList.add(new URI(protocol, null, realHost, Integer.parseInt(port), null, null, null));
-                    } catch (URISyntaxException e) {
-                        throw Messages.log.invalidProviderUri(e, protocol + "://" + realHost + ":" + port);
-                    }
-                }
-            }
-            return uriList;
-        }
-        // no EJB connection properties were specified; nothing left to try
-        return null;
-    }
-
-    private String getStringProperty(final String propertyName, final FastHashtable<String, Object> env) {
-        final Object propertyValue = env.get(propertyName);
-        return propertyValue == null ? null : (String) propertyValue;
     }
 
     ReparsedName reparse(final Name origName) throws InvalidNameException {
