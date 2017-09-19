@@ -54,6 +54,7 @@ import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.common.net.Inet;
 import org.wildfly.naming.client._private.Messages;
+import org.wildfly.naming.client.util.NetworkUtils;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
@@ -282,7 +283,7 @@ public final class ProviderEnvironment {
                     final String connectionPrefix = REMOTE_CONNECTION_PREFIX + connection + ".";
                     final String connUserName = getEnvString(environment, connectionPrefix + EJB_USERNAME_KEY, null, true);
                     final String rawHostString = getEnvString(environment, connectionPrefix + EJB_HOST_KEY, null, true);
-                    final String connHostName = Inet.isInet6Address(rawHostString) ? "[" + rawHostString + "]" : rawHostString;
+                    final String connHostName = NetworkUtils.formatPossibleIpv6Address(rawHostString);
                     final String connPassword = getEnvString(environment, connectionPrefix + EJB_PASSWORD_KEY, null, true);
                     final String connPasswordBase64 = getEnvString(environment, connectionPrefix + EJB_PASSWORD_BASE64_KEY, null, true);
                     final String connCallbackHandlerClass = getEnvString(environment, connectionPrefix + EJB_CALLBACK_HANDLER_CLASS_KEY, null, true);
