@@ -216,7 +216,7 @@ public final class ProviderEnvironment {
             }
 
             // we definitely must override default auth if any of these are given; we _may_ have to do so if compat props are given
-            boolean overrideDefaultAuth = password != null || passwordBase64 != null || callbackClass != null || securityRealm != null;
+            boolean overrideDefaultAuth = password != null || passwordBase64 != null || callbackClass != null || securityRealm != null || userName != null;
             CallbackHandler callbackHandler = null;
 
             if (callbackClass != null) {
@@ -334,7 +334,7 @@ public final class ProviderEnvironment {
                         } catch (URISyntaxException e) {
                             throw Messages.log.invalidProviderGenerated(e);
                         }
-                        if (connPassword != null || connPasswordBase64 != null || connCallbackHandler != null) {
+                        if (connPassword != null || connPasswordBase64 != null || connCallbackHandler != null || connUserName != null) {
                             if (overrides == null) {
                                 overrides = new HashMap<>();
                             }
