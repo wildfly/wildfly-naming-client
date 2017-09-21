@@ -199,8 +199,8 @@ public final class ProviderEnvironment {
             // Start with the simple ones
             final String userName = getEnvString(environment, Context.SECURITY_PRINCIPAL, null, true);
 
-            // Get provider URLs (modifying with default user name if any)
-            boolean gotProviders = populateProviderUris(environment, userName);
+            // Get provider URLs
+            boolean gotProviders = populateProviderUris(environment);
 
             // Check for top-level authentication defaults
             final String securityProtocol = getEnvString(environment, Context.SECURITY_PROTOCOL, null, true);
@@ -239,6 +239,9 @@ public final class ProviderEnvironment {
 
             AuthenticationConfiguration globalAuthConf = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(remotingOptions, AuthenticationConfiguration.empty());
 
+            if (userName != null) {
+                globalAuthConf = globalAuthConf.useName(userName);
+            }
             if (callbackHandler != null) {
                 globalAuthConf = globalAuthConf.useCallbackHandler(callbackHandler);
             }
@@ -310,7 +313,7 @@ public final class ProviderEnvironment {
 
                     OptionMap connRemotingOptions = getOptionMap(environment, connectionPrefix + CONNECT_OPTIONS, classLoader);
 
-                    if (connCallbackHandler != null || userName != null) {
+                    if (connCallbackHandler != null || connUserName != null) {
                         // disable quiet local auth
                         connRemotingOptions = setQuietLocalAuth(connRemotingOptions, false);
                     }
@@ -321,7 +324,7 @@ public final class ProviderEnvironment {
                         try {
                             uri = new URI(
                                 protocol,
-                                connUserName != null ? connUserName : userName,
+                                null,
                                 connHostName,
                                 connPort,
                                 null,
@@ -337,6 +340,9 @@ public final class ProviderEnvironment {
                             }
                             AuthenticationConfiguration authConfig = RemotingOptions.mergeOptionsIntoAuthenticationConfiguration(connRemotingOptions, AuthenticationConfiguration.empty());
 
+                            if (connUserName != null) {
+                                authConfig = authConfig.useName(connUserName);
+                            }
                             if (connCallbackHandler != null) {
                                 authConfig = authConfig.useCallbackHandler(connCallbackHandler);
                             }
@@ -431,7 +437,7 @@ public final class ProviderEnvironment {
             return null;
         }
 
-        private boolean populateProviderUris(Map<String, ?> env, final String userName) throws ConfigurationException {
+        private boolean populateProviderUris(Map<String, ?> env) throws ConfigurationException {
             Object urlString = env.get(Context.PROVIDER_URL);
             if (urlString != null) {
                 String providerUriString = Expression.compile(urlString.toString(), Expression.Flag.LENIENT_SYNTAX).evaluateWithPropertiesAndEnvironment(false);
@@ -441,17 +447,6 @@ public final class ProviderEnvironment {
                         URI providerUri;
                         try {
                             providerUri = new URI(url.trim());
-                            if (userName != null && providerUri.getUserInfo() == null) {
-                                providerUri = new URI(
-                                    providerUri.getScheme(),
-                                    userName,
-                                    providerUri.getHost(),
-                                    providerUri.getPort(),
-                                    providerUri.getPath(),
-                                    providerUri.getQuery(),
-                                    providerUri.getFragment()
-                                );
-                            }
                         } catch (URISyntaxException e) {
                             throw Messages.log.invalidProviderUri(e, url);
                         }
