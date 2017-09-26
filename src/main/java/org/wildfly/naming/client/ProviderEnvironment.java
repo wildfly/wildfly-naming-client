@@ -18,6 +18,7 @@
 
 package org.wildfly.naming.client;
 
+import static java.security.AccessController.doPrivileged;
 import static org.jboss.naming.remote.client.InitialContextFactory.CALLBACK_HANDLER_KEY;
 import static org.jboss.naming.remote.client.InitialContextFactory.PASSWORD_BASE64_KEY;
 import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
@@ -32,6 +33,7 @@ import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_USERNAME_KEY;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.PrivilegedAction;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -50,6 +52,7 @@ import javax.security.auth.callback.CallbackHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
+import org.wildfly.common.net.Inet;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.NetworkUtils;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
@@ -191,7 +194,7 @@ public final class ProviderEnvironment {
         public Builder populateFromEnvironment(Map<String, ?> environment) throws NamingException {
             Assert.checkNotNullParam("environment", environment);
 
-            final ClassLoader classLoader = Builder.class.getClassLoader();
+            final ClassLoader classLoader = secureGetContextClassLoader();
 
             // Start with the simple ones
             final String userName = getEnvString(environment, Context.SECURITY_PRINCIPAL, null, true);
@@ -527,6 +530,22 @@ public final class ProviderEnvironment {
             updatedOptionMapBuilder.set(Options.SASL_PROPERTIES, Sequence.of(Property.of(LocalUserClient.QUIET_AUTH, Boolean.toString(useQuietAuth))));
             return updatedOptionMapBuilder.getMap();
         }
+
+        private static ClassLoader secureGetContextClassLoader() {
+            final ClassLoader contextClassLoader;
+            final SecurityManager sm = System.getSecurityManager();
+            if (sm != null) {
+                contextClassLoader = doPrivileged((PrivilegedAction<ClassLoader>) Builder::getContextClassLoader);
+            } else {
+                contextClassLoader = getContextClassLoader();
+            }
+            return contextClassLoader;
+        }
+
+        private static ClassLoader getContextClassLoader() {
+            return Thread.currentThread().getContextClassLoader();
+        }
+
     }
 
     static final class FixedAuthenticationContextSupplier implements Supplier<AuthenticationContext> {
