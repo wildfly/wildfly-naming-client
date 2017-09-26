@@ -52,7 +52,6 @@ import javax.security.auth.callback.CallbackHandler;
 import org.jboss.remoting3.RemotingOptions;
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
-import org.wildfly.common.net.Inet;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.NetworkUtils;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
@@ -230,7 +229,7 @@ public final class ProviderEnvironment {
                 }
             }
 
-            OptionMap remotingOptions = getOptionMap(environment, CONNECT_OPTIONS_PREFIX, classLoader);
+            OptionMap remotingOptions = getOptionMap(environment, CONNECT_OPTIONS_PREFIX, Builder.class.getClassLoader());
 
             if (callbackHandler != null || userName != null) {
                 // disable quiet local auth
@@ -311,7 +310,7 @@ public final class ProviderEnvironment {
                         }
                     }
 
-                    OptionMap connRemotingOptions = getOptionMap(environment, connectionPrefix + CONNECT_OPTIONS, classLoader);
+                    OptionMap connRemotingOptions = getOptionMap(environment, connectionPrefix + CONNECT_OPTIONS, Builder.class.getClassLoader());
 
                     if (connCallbackHandler != null || connUserName != null) {
                         // disable quiet local auth
