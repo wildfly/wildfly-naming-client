@@ -24,6 +24,7 @@ import javax.naming.NamingException;
 import org.kohsuke.MetaInfServices;
 import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.NamingContextFactory;
+import org.wildfly.naming.client.ProviderEnvironment;
 import org.wildfly.naming.client.util.FastHashtable;
 
 /**
@@ -44,7 +45,7 @@ public final class RemoteNamingContextFactory implements NamingContextFactory {
         return namingProvider instanceof RemoteNamingProvider && (nameScheme == null || nameScheme.equals("java"));
     }
 
-    public Context createRootContext(final NamingProvider namingProvider, final String nameScheme, final FastHashtable<String, Object> env) throws NamingException {
+    public Context createRootContext(final NamingProvider namingProvider, final String nameScheme, final FastHashtable<String, Object> env, final ProviderEnvironment providerEnvironment) throws NamingException {
         // [WNFC-22] treat the java scheme as null
         return new RemoteContext((RemoteNamingProvider) namingProvider, "java".equals(nameScheme) ? null : nameScheme, env);
     }

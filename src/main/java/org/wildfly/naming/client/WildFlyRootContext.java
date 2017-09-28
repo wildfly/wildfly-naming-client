@@ -762,7 +762,7 @@ public final class WildFlyRootContext implements DirContext {
             // search for context factories which support a null provider
             for (NamingContextFactory contextFactory : namingContextFactories) {
                 if (contextFactory.supportsUriScheme(null, nameScheme)) {
-                    return new ContextResult(contextFactory.createRootContext(null, nameScheme, getEnvironment()), false);
+                    return new ContextResult(contextFactory.createRootContext(null, nameScheme, getEnvironment(), providerEnvironment), false);
                 }
             }
             if (nameScheme != null) {
@@ -791,7 +791,7 @@ public final class WildFlyRootContext implements DirContext {
                 final NamingProvider provider = providerFactory.createProvider(getEnvironment(), providerEnvironment);
                 for (NamingContextFactory contextFactory : namingContextFactories) {
                     if (contextFactory.supportsUriScheme(provider, nameScheme)) {
-                        return new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment()), false);
+                        return new ContextResult(contextFactory.createRootContext(provider, nameScheme, getEnvironment(), providerEnvironment), false);
                     }
                 }
             }
