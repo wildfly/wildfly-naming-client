@@ -49,8 +49,9 @@ public interface NamingContextFactory {
      * @param namingProvider the naming provider which is handling this request, or {@code null} if it is local
      * @param nameScheme the scheme in the name, or {@code null} if there is no name URL scheme
      * @param env a copy of the environment which may be consumed directly by the provider (not {@code null})
+     * @param providerEnvironment the provider environment (not {@code null})
      * @return the root context (must not be {@code null})
      * @throws NamingException if the root context creation failed for some reason
      */
-    Context createRootContext(NamingProvider namingProvider, String nameScheme, FastHashtable<String, Object> env) throws NamingException;
+    Context createRootContext(NamingProvider namingProvider, String nameScheme, FastHashtable<String, Object> env, ProviderEnvironment providerEnvironment) throws NamingException;
 }
