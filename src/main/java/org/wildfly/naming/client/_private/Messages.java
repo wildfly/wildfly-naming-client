@@ -24,7 +24,6 @@ import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ServiceConfigurationError;
 
 import javax.naming.CommunicationException;
@@ -66,11 +65,11 @@ public interface Messages extends BasicLogger {
     @Message(id = 0, value = "WildFly Naming version %s")
     void greeting(String version);
 
-    @Message(id = 1, value = "Failed to create object from reference")
-    NamingException objectFromReference(@Cause Throwable cause);
+//    @Message(id = 1, value = "Failed to create object from reference")
+//    NamingException objectFromReference(@Cause Throwable cause);
 
-    @Message(id = 2, value = "Failed to dereference link")
-    NamingException dereferenceLink(@Cause Throwable t);
+//    @Message(id = 2, value = "Failed to dereference link")
+//    NamingException dereferenceLink(@Cause Throwable t);
 
     @Message(id = 3, value = "Invalid naming provider URI: %s")
     ConfigurationException invalidProviderUri(@Cause Exception cause, Object providerUri);
@@ -87,8 +86,8 @@ public interface Messages extends BasicLogger {
     @Message(id = 7, value = "Invalid URL scheme name \"%s\"")
     InvalidNameException invalidURLSchemeName(String name);
 
-    @Message(id = 8, value = "Invalid relative name \"%s\"")
-    InvalidNameException invalidRelativeName(String relativeName);
+//    @Message(id = 8, value = "Invalid relative name \"%s\"")
+//    InvalidNameException invalidRelativeName(String relativeName);
 
     @Message(id = 9, value = "Name index %d is out of bounds")
     IndexOutOfBoundsException nameIndexOutOfBounds(int pos);
@@ -102,8 +101,8 @@ public interface Messages extends BasicLogger {
     @Message(id = 12, value = "Unterminated escape sequence in name \"%s\"")
     InvalidNameException missingEscape(String name);
 
-    @Message(id = 13, value = "Name URL scheme \"%s\" is not valid")
-    InvalidNameException invalidNameUrlScheme(String urlScheme);
+//    @Message(id = 13, value = "Name URL scheme \"%s\" is not valid")
+//    InvalidNameException invalidNameUrlScheme(String urlScheme);
 
     @Message(id = 14, value = "Renaming from \"%s\" to \"%s\" across providers is not supported")
     RenameAcrossNamingProvidersException renameAcrossProviders(Name oldName, Name newName);
@@ -127,8 +126,8 @@ public interface Messages extends BasicLogger {
     @Message(id = 20, value = "Remote naming operation failed")
     CommunicationException operationFailed(@Cause Throwable cause);
 
-    @Message(id = 21, value = "Connection terminated")
-    CommunicationException connectionEnded();
+//    @Message(id = 21, value = "Connection terminated")
+//    CommunicationException connectionEnded();
 
     @Message(id = 22, value = "The server provided no compatible protocol versions")
     CommunicationException noCompatibleVersions();
@@ -146,17 +145,17 @@ public interface Messages extends BasicLogger {
     @Message(id = 26, value = "No provider for found for URI: %s")
     OperationNotSupportedException noProviderForUri(String uri);
 
-    @Message(id = 27, value = "Invalid naming permission action \"%s\"")
-    IllegalArgumentException invalidPermissionAction(String action);
+//    @Message(id = 27, value = "Invalid naming permission action \"%s\"")
+//    IllegalArgumentException invalidPermissionAction(String action);
 
-    @Message(id = 28, value = "Naming provider instance close failed")
-    CommunicationException namingProviderCloseFailed(@Cause Throwable cause);
+//    @Message(id = 28, value = "Naming provider instance close failed")
+//    CommunicationException namingProviderCloseFailed(@Cause Throwable cause);
 
     @Message(id = 29, value = "Invalid leading bytes in header")
     CommunicationException invalidHeader();
 
-    @Message(id = 30, value = "Unexpected response parameter received")
-    IOException unexpectedResponseParameter();
+//    @Message(id = 30, value = "Unexpected response parameter received")
+//    IOException unexpectedResponseParameter();
 
     @Message(id = 31, value = "Outcome not understood")
     IOException outcomeNotUnderstood();
@@ -206,25 +205,25 @@ public interface Messages extends BasicLogger {
     @Message(id = 44, value = "Unable to instantiate callback handler instance of type  \"%s\"")
     NamingException failedToInstantiateCallbackHandlerInstance(@Cause Exception cause, String callbackHandlerClass);
 
-    @Message(id = 45, value = "Cannot specify both a plain text and base64 encoded password")
-    NamingException plainTextAndBase64PasswordSpecified();
+//    @Message(id = 45, value = "Cannot specify both a plain text and base64 encoded password")
+//    NamingException plainTextAndBase64PasswordSpecified();
 
-    @Message(id = 46, value = "Failed to configure SSL context")
-    CommunicationException failedToConfigureSslContext(@Cause Throwable cause);
+//    @Message(id = 46, value = "Failed to configure SSL context")
+//    CommunicationException failedToConfigureSslContext(@Cause Throwable cause);
 
-    @Message(id = 47, value = "Failed to connect to any server")
-    IOException failedToConnectToAnyServer();
+//    @Message(id = 47, value = "Failed to connect to any server")
+//    IOException failedToConnectToAnyServer();
 
-    @Message(id = 48, value = "Failed to close one or more naming providers")
-    NamingException failedToCloseNamingProviders();
+//    @Message(id = 48, value = "Failed to close one or more naming providers")
+//    NamingException failedToCloseNamingProviders();
 
     @Once
     @LogMessage(level = INFO)
     @Message(id = 49, value = "Usage of the legacy \"remote.connections\" property is deprecated; please use javax.naming.Context#PROVIDER_URL instead")
     void deprecatedProperties();
 
-    @Message(id = 50, value = "Invalid location given")
-    IllegalArgumentException invalidLocation();
+//    @Message(id = 50, value = "Invalid location given")
+//    IllegalArgumentException invalidLocation();
 
     @LogMessage(level = WARN)
     @Message(id = 51, value = "Provider URLs already given via standard mechanism; ignoring legacy property-based connection configuration")
