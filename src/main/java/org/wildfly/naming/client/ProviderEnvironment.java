@@ -53,10 +53,12 @@ import org.jboss.remoting3.RemotingOptions;
 import org.wildfly.common.Assert;
 import org.wildfly.common.expression.Expression;
 import org.wildfly.naming.client._private.Messages;
+import org.wildfly.naming.client.util.EnvironmentUtils;
 import org.wildfly.naming.client.util.NetworkUtils;
 import org.wildfly.security.auth.client.AuthenticationConfiguration;
 import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
+import org.wildfly.security.auth.server.IdentityCredentials;
 import org.wildfly.security.sasl.localuser.LocalUserClient;
 import org.wildfly.security.util.CodePointIterator;
 import org.xnio.Option;
@@ -206,16 +208,16 @@ public final class ProviderEnvironment {
             final String globalSslEnabledOption = getEnvString(environment, EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, null, true);
             final boolean isSsl = globalSslEnabledOption != null ? Boolean.parseBoolean(globalSslEnabledOption) : securityProtocol != null && "ssl".equalsIgnoreCase(securityProtocol.trim());
             final String callbackClass = getEnvString(environment, CALLBACK_HANDLER_KEY, null, true);
-            final String password = getEnvString(environment, Context.SECURITY_CREDENTIALS, null, false);
+            final IdentityCredentials credentials = EnvironmentUtils.getSecurityCredentials(environment);
             final String passwordBase64 = getEnvString(environment, PASSWORD_BASE64_KEY, null, false);
             final String securityRealm = getEnvString(environment, REALM_KEY, null, true);
 
-            if (callbackClass != null && (userName != null || password != null || passwordBase64 != null)) {
+            if (callbackClass != null && (userName != null || credentials != null || passwordBase64 != null)) {
                 throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
             }
 
             // we definitely must override default auth if any of these are given; we _may_ have to do so if compat props are given
-            boolean overrideDefaultAuth = password != null || passwordBase64 != null || callbackClass != null || securityRealm != null || userName != null;
+            boolean overrideDefaultAuth = credentials != null || passwordBase64 != null || callbackClass != null || securityRealm != null || userName != null;
             CallbackHandler callbackHandler = null;
 
             if (callbackClass != null) {
@@ -244,8 +246,8 @@ public final class ProviderEnvironment {
             if (callbackHandler != null) {
                 globalAuthConf = globalAuthConf.useCallbackHandler(callbackHandler);
             }
-            if (password != null) {
-                globalAuthConf = globalAuthConf.usePassword(password);
+            if (credentials != null) {
+                globalAuthConf = globalAuthConf.useCredentials(credentials);
             } else if (passwordBase64 != null) {
                 globalAuthConf = globalAuthConf.usePassword(CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString());
             }

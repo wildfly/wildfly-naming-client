@@ -22,9 +22,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.naming.Context;
 import javax.security.auth.x500.X500PrivateCredential;
@@ -69,7 +69,7 @@ public final class EnvironmentUtils {
      * @param env the environment (must not be {@code null})
      * @return the security credentials, or {@code null} if none was present
      */
-    public static IdentityCredentials getSecurityCredentials(Hashtable<String, ?> env) {
+    public static IdentityCredentials getSecurityCredentials(Map<String, ?> env) {
         return getSecurityCredentials(env, Context.SECURITY_CREDENTIALS);
     }
 
@@ -81,7 +81,7 @@ public final class EnvironmentUtils {
      * @param propertyName the property name (must not be {@code null})
      * @return the security credentials, or {@code null} if none was present
      */
-    public static IdentityCredentials getSecurityCredentials(final Hashtable<String, ?> env, final String propertyName) {
+    public static IdentityCredentials getSecurityCredentials(final Map<String, ?> env, final String propertyName) {
         Assert.checkNotNullParam("env", env);
         Assert.checkNotNullParam("propertyName", propertyName);
         final Object rawCredential = env.get(propertyName);
@@ -140,7 +140,7 @@ public final class EnvironmentUtils {
      *
      * @return the name of the security realm, or {@code null} if there is none or it is in an unrecognized format
      */
-    public static String getSecurityRealmName(Hashtable<String, ?> env) {
+    public static String getSecurityRealmName(Map<String, ?> env) {
         final Object rawRealm = env.get("java.naming.security.sasl.realm");
         return rawRealm instanceof String ? (String) rawRealm : null;
     }
@@ -152,7 +152,7 @@ public final class EnvironmentUtils {
      * @param env the environment (must not be {@code null})
      * @return the list of package prefixes
      */
-    public static List<String> getURLPackagePrefixes(Hashtable<String, ?> env) {
+    public static List<String> getURLPackagePrefixes(Map<String, ?> env) {
         return getURLPackagePrefixes(env, Context.URL_PKG_PREFIXES);
     }
 
@@ -164,7 +164,7 @@ public final class EnvironmentUtils {
      * @param propertyName the property name to search (must not be {@code null})
      * @return the list of package prefixes
      */
-    public static List<String> getURLPackagePrefixes(Hashtable<String, ?> env, String propertyName) {
+    public static List<String> getURLPackagePrefixes(Map<String, ?> env, String propertyName) {
         Assert.checkNotNullParam("env", env);
         Assert.checkNotNullParam("propertyName", propertyName);
         final ArrayList<String> list = new ArrayList<>();
