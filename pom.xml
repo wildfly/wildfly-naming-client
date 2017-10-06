@@ -31,6 +31,8 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <version.org.jboss.xnio>3.5.1.Final</version.org.jboss.xnio>
+        <version.org.jboss.threads>2.2.1.Final</version.org.jboss.threads>
     </properties>
 
     <groupId>org.wildfly</groupId>
@@ -123,6 +125,22 @@
             <artifactId>jboss-remoting</artifactId>
             <version>5.0.0.Final</version>
         </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-api</artifactId>
+            <version>${version.org.jboss.xnio}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-nio</artifactId>
+            <version>${version.org.jboss.xnio}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.threads</groupId>
+            <artifactId>jboss-threads</artifactId>
+            <version>${version.org.jboss.threads}</version>
+        </dependency>
+
 
         <!-- JUnit -->
         <dependency>

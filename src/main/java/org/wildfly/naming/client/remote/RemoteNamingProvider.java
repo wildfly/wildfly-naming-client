@@ -34,6 +34,7 @@ import org.jboss.remoting3.Endpoint;
 import org.wildfly.common.Assert;
 import org.wildfly.naming.client.NamingProvider;
 import org.wildfly.naming.client.ProviderEnvironment;
+import org.wildfly.naming.client.RetryContext;
 import org.wildfly.naming.client._private.Messages;
 import org.wildfly.naming.client.util.FastHashtable;
 import org.wildfly.security.auth.AuthenticationException;
@@ -83,6 +84,11 @@ public final class RemoteNamingProvider implements NamingProvider {
      */
     public ConnectionPeerIdentity getPeerIdentityForNaming() throws NamingException {
         return (ConnectionPeerIdentity) NamingProvider.super.getPeerIdentityForNaming();
+    }
+
+
+    public ConnectionPeerIdentity getPeerIdentityForNamingUsingRetry(RetryContext context) throws NamingException {
+        return (ConnectionPeerIdentity) NamingProvider.super.getPeerIdentityForNamingUsingRetry(context);
     }
 
     /**
