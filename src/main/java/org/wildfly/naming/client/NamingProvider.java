@@ -18,14 +18,22 @@
 
 package org.wildfly.naming.client;
 
+import static org.wildfly.naming.client.ProviderEnvironment.TIME_MASK;
+
+import java.lang.reflect.UndeclaredThrowableException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
+import javax.naming.Name;
 import javax.naming.NamingException;
 
 import org.wildfly.common.function.ExceptionBiFunction;
+import org.wildfly.naming.client._private.Messages;
 import org.wildfly.security.auth.client.PeerIdentity;
 
 /**
@@ -50,9 +58,94 @@ public interface NamingProvider extends AutoCloseable {
      * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
      */
     default PeerIdentity getPeerIdentityForNaming() throws NamingException {
-        final List<URI> locations = getProviderEnvironment().getProviderUris();
-        return getPeerIdentityForNaming(locations.get(ThreadLocalRandom.current().nextInt(locations.size())));
+        return getPeerIdentityForNamingUsingRetry(null);
     }
+
+    /**
+     * Get a peer identity to use for context operations, retrying on failure.
+     * The identity may be fixed or it may vary, depending on the context
+     * configuration. If the provider has multiple locations, a location is
+     * randomly selected. If the retry context is null, a retry will not occur.
+     *
+     * @param context the retry context for storing state required when retrying
+     * @return the peer identity to use (must not be {@code null})
+     * @throws NamingException if connecting, authenticating, or
+     *         re-authenticating the peer failed
+     */
+    default PeerIdentity getPeerIdentityForNamingUsingRetry(RetryContext context) throws NamingException {
+        final ProviderEnvironment environment = getProviderEnvironment();
+        final ConcurrentMap<URI, Long> blackList = environment.getBlackList();
+        List<URI> locations = environment.getProviderUris();
+
+        if (context != null && (blackList.size() > 0 || context.transientFailCount() > 0)) {
+            long time = System.currentTimeMillis();
+            List<URI> updated = new ArrayList<>(locations.size());
+            for (URI location : locations) {
+                Long timeout = blackList.get(location);
+                if ((timeout == null || time >= (timeout & TIME_MASK)) && !context.hasTransientlyFailed(location)) {
+                    updated.add(location);
+                }
+            }
+            locations = updated;
+        }
+
+        URI location = null;
+        if (locations.size() < 1) {
+            throwNoMoreDestinationsException(context);
+        } else if (locations.size() == 1) {
+            location = locations.get(0);
+        } else {
+            location = locations.get(ThreadLocalRandom.current().nextInt(locations.size()));
+        }
+
+        if (context != null) {
+            context.setCurrentDestination(location);
+        }
+
+        return getPeerIdentityForNaming(location);
+    }
+
+    /**
+     * Throws either an <code>ExhaustedDestinationsException</code>
+     * utilizing the information passed in the specified
+     * <code>RetryContext</code>, or an explicit exception mandated by the
+     * context.
+     *
+     * @param context the current retry context of this invocation
+     * @throws ExhaustedDestinationsException if no explicit exception is specified
+     * @throws NamingException if explicity required
+     * @throws RuntimeException if explicity required
+     */
+    default void throwNoMoreDestinationsException(RetryContext context) throws NamingException {
+        if (context == null) {
+            throw Messages.log.noMoreDestinations();
+        }
+
+        if (context.hasExplicitFailure()) {
+            Throwable throwable = context.getFailures().get(0);
+            try {
+                throw throwable;
+            } catch (NamingException | RuntimeException | Error e) {
+                throw e;
+            } catch (Throwable t) {
+                throw new UndeclaredThrowableException(t);
+            }
+        }
+
+        final ProviderEnvironment env = getProviderEnvironment();
+        int blacklisted = env.getBlackList().size();
+        int transientlyFailed = context.transientFailCount();
+        ExhaustedDestinationsException exception = Messages.log.noMoreDestinations(blacklisted, transientlyFailed);
+        for (Throwable failure : context.getFailures()) {
+            exception.addSuppressed(failure);
+        }
+
+        // Remove this call
+        StackTraceElement[] stackTrace = exception.getStackTrace();
+        exception.setStackTrace(Arrays.copyOfRange(stackTrace, 1, stackTrace.length - 1));
+        throw exception;
+    }
+
 
     /**
      * Get the peer identity to use for context operations for the specified location.  The identity may be fixed or it may vary, depending on the context configuration.
@@ -63,6 +156,7 @@ public interface NamingProvider extends AutoCloseable {
      * @throws NamingException if connecting, authenticating, or re-authenticating the peer failed
      */
     PeerIdentity getPeerIdentityForNaming(URI location) throws NamingException;
+
 
     /**
      * Get the current naming provider being used for the current deserialization operation.
@@ -110,6 +204,22 @@ public interface NamingProvider extends AutoCloseable {
         final NamingProvider old = CurrentNamingProvider.getAndSetCurrent(this);
         try {
             return function.apply(arg1, arg2);
+        } finally {
+            CurrentNamingProvider.setCurrent(old);
+        }
+    }
+    /**
+     * Perform an action under the current naming provider.
+     *
+     * @param function the function to apply (must not be {@code null})
+     * @param <T> the first argument type
+     * @param <R> the function return type
+     * @return the function return value
+     */
+    default <T, R> R performExceptionAction(NamingOperation<T, R> function, RetryContext contextOrNull, Name name, T param) throws NamingException {
+        final NamingProvider old = CurrentNamingProvider.getAndSetCurrent(this);
+        try {
+            return function.apply(contextOrNull, name, param);
         } finally {
             CurrentNamingProvider.setCurrent(old);
         }

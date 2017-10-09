@@ -42,6 +42,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Supplier;
 
 import javax.naming.ConfigurationException;
@@ -73,7 +76,11 @@ import org.xnio.Sequence;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class ProviderEnvironment {
+    private static final long BACKOFF_MASK = 0x7FFF;
+    public static final long TIME_MASK = ~BACKOFF_MASK;
+
     private final List<URI> providerUris;
+    private final ConcurrentHashMap<URI, Long> blackList = new ConcurrentHashMap<>(0);
     private final Supplier<AuthenticationContext> authenticationContextSupplier;
 
     @SuppressWarnings({ "Convert2Lambda", "Anonymous2MethodRef" })
@@ -96,6 +103,87 @@ public final class ProviderEnvironment {
      */
     public List<URI> getProviderUris() {
         return providerUris;
+    }
+
+    /**
+     * Gets the black-list for this provider. The map should generally not be
+     * mutated, with updates instead going through {@link #updateBlacklist(URI)}
+     * and {@link #dropFromBlacklist(URI)}.
+     *
+     * <p>The map is keyed by destination URI, as specified by
+     * <code>PROVIDER_URL</code>. The value is a long that loosely corresponds
+     * to an expiration timestamp. More specifically the time portion is the
+     * first 49 bits, retrievable using a bitwise AND on {@link #TIME_MASK}. The
+     * remaining bits are used to store the current back-off multiplier. These
+     * are typically not of interest to a user or provider implementor, as
+     * {@link #updateBlacklist(URI)} will update them accordingly.
+     * </p>
+     *
+     * <p>A simple provider implementation would perform the falling
+     * pseudo-code when selecting a destination: </p>
+     *
+     * <pre>{@code
+     *
+     * URI location = ...
+     * Long timeout = env.getBlackList().get(location);
+     * if (timeout == null || time >= (timeout & TIME_MASK)) {
+     *     // Black-list entry expired!!
+     * } else {
+     *     // Ignoring, still black-listed!
+     * }
+     *
+     * }</pre>
+     *
+     * @return a concurrent map representing the black-list
+     */
+    public ConcurrentMap<URI, Long> getBlackList() {
+        return blackList;
+    }
+
+    /**
+     * Adds location to black-list, or extends it's back-off value if already
+     * present in the black list. Each call doubles the back-off time, as well
+     * as resets the starting time. Providers should call this method anytime
+     * a location is non-responsive.
+     *
+     * @param location the URI to black-list.
+     */
+    public void updateBlacklist(URI location) {
+        // Black-list entry value format =
+        // 49 bits truncated ceiling timestamp | 15 bits backoff multiplier
+        // Loss of 15 bits corresponds to roughly a minute (65535 millis)
+        // multiplier doubles each update, adding a rough delay of 2^16 to 2^29
+        // millis (around 1 minute to 6 days). LSB is used to pad for ceiling.
+
+        for (;;) {
+            long time = System.currentTimeMillis();
+
+            Long entry = blackList.get(location);
+            if (entry == null) {
+                // Ceiling + roughly 1.5 minutes (starting point)
+                long next = (((time >>> 15) + 3L) << 15) | 2L;
+                entry = blackList.putIfAbsent(location, next);
+                if (entry == null) {
+                    return;
+                }
+            }
+            int backoff = (int) ((entry & BACKOFF_MASK) << 1);
+            backoff = backoff > BACKOFF_MASK ? backoff >> 1 : backoff;
+            long next = (((time >>> 15) + backoff + 1) << 15) | backoff;
+            if (blackList.replace(location, entry, next)) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Removes the specified location from the black-list, allowing it to be
+     * used again.
+     *
+     * @param location the location to remove
+     */
+    public void dropFromBlacklist(URI location) {
+        blackList.remove(location);
     }
 
     /**

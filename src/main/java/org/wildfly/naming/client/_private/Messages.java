@@ -46,6 +46,7 @@ import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
 import org.jboss.logging.annotations.Once;
 import org.jboss.logging.annotations.Property;
+import org.wildfly.naming.client.ExhaustedDestinationsException;
 import org.wildfly.naming.client.RenameAcrossNamingProvidersException;
 import org.wildfly.security.auth.AuthenticationException;
 
@@ -238,4 +239,10 @@ public interface Messages extends BasicLogger {
     @LogMessage(level = WARN)
     @Message(id = 54, value = "Ignoring duplicate destination URI \"%s\"")
     void ignoringDuplicateDestination(URI uri);
+
+    @Message(id = 55, value = "No more destinations are available to attempt the operation (%d blacklisted, %d transiently failed). See suppressed exceptions for details")
+    ExhaustedDestinationsException noMoreDestinations(int blacklisted, int transientlyFailed);
+
+    @Message(id = 56, value = "No more destinations are available to attempt the operation.")
+    ExhaustedDestinationsException noMoreDestinations();
 }
