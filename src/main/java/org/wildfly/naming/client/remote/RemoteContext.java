@@ -97,12 +97,12 @@ final class RemoteContext extends AbstractFederatingContext {
     private  <T, R> R performWithRetry(NamingOperation<T, R> function, ProviderEnvironment environment, RetryContext context, Name name, T param) throws NamingException {
         // Directly pass-through single provider executions
         if (context == null) {
-            return function.apply(null, name, param);
+            return provider.performExceptionAction(function, context, name, param);
         }
 
         for (int notFound = 0;;) {
             try {
-                R result = function.apply(context, name, param);
+                R result = provider.performExceptionAction(function, context, name, param);
                 environment.dropFromBlacklist(context.currentDestination());
                 return result;
             } catch (NameNotFoundException e) {
