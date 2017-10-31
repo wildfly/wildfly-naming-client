@@ -62,7 +62,7 @@ public final class WildFlyInitialContext extends InitialLdapContext {
     }
 
     protected Context getDefaultInitCtx() throws NamingException {
-        throw new NoInitialContextException();
+        return rootContext;
     }
     
     public FastHashtable<String, Object> getEnvironment() throws NamingException {
