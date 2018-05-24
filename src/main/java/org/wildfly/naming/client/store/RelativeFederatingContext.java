@@ -59,39 +59,42 @@ public class RelativeFederatingContext extends AbstractFederatingContext {
     }
 
     protected void bindNative(final Name name, final Object obj) throws NamingException {
-        rootContext.bind(getAbsoluteName(name), obj);
+        rootContext.bind(decomposeName(getAbsoluteName(name)), obj);
     }
 
     protected void rebindNative(final Name name, final Object obj) throws NamingException {
-        rootContext.rebind(getAbsoluteName(name), obj);
+        rootContext.rebind(decomposeName(getAbsoluteName(name)), obj);
     }
 
     protected void unbindNative(final Name name) throws NamingException {
-        rootContext.unbind(getAbsoluteName(name));
+        rootContext.unbind(decomposeName(getAbsoluteName(name)));
     }
 
     protected void renameNative(final Name oldName, final Name newName) throws NamingException {
-        rootContext.rename(getAbsoluteName(oldName), getAbsoluteName(newName));
+        rootContext.rename(decomposeName(getAbsoluteName(oldName)), decomposeName(getAbsoluteName(newName)));
     }
 
     protected CloseableNamingEnumeration<NameClassPair> listNative(final Name name) throws NamingException {
-        return rootContext.list(getAbsoluteName(name));
+        return rootContext.list(decomposeName(getAbsoluteName(name)));
     }
 
     protected CloseableNamingEnumeration<Binding> listBindingsNative(final Name name) throws NamingException {
-        return rootContext.listBindings(getAbsoluteName(name));
+        return rootContext.listBindings(decomposeName(getAbsoluteName(name)));
     }
 
     protected void destroySubcontextNative(final Name name) throws NamingException {
-        rootContext.destroySubcontext(getAbsoluteName(name));
+        rootContext.destroySubcontext(decomposeName(getAbsoluteName(name)));
     }
 
     protected Context createSubcontextNative(final Name name) throws NamingException {
-        return rootContext.createSubcontext(getAbsoluteName(name));
+        return rootContext.createSubcontext(decomposeName(getAbsoluteName(name)));
     }
 
     protected Object lookupLinkNative(final Name name) throws NamingException {
-        return rootContext.lookupLink(getAbsoluteName(name));
+        if (name.isEmpty()) {
+            return new RelativeFederatingContext(new FastHashtable<>(getEnvironment()), rootContext, prefix);
+        }
+        return rootContext.lookupLink(decomposeName(getAbsoluteName(name)));
     }
 
     public void close() {
