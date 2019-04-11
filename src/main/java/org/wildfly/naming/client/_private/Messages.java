@@ -245,4 +245,8 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 56, value = "No more destinations are available to attempt the operation.")
     ExhaustedDestinationsException noMoreDestinations();
+
+    @LogMessage(level = Logger.Level.INFO)
+    @Message(id = 57, value = "jboss-naming-client.properties is deprecated; new applications should use org.wildfly.naming.client.WildFlyInitialContextFactory instead")
+    void oldClientPropertyFileDeprecated();
 }
