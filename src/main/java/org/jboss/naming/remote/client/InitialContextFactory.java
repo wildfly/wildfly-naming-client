@@ -18,13 +18,24 @@
 
 package org.jboss.naming.remote.client;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.security.PrivilegedAction;
 import java.util.Hashtable;
+import java.util.Map;
+import java.util.Properties;
 
+import javax.naming.ConfigurationException;
 import javax.naming.Context;
 import javax.naming.NamingException;
 
 import org.wildfly.naming.client.WildFlyInitialContextFactory;
 import org.wildfly.naming.client._private.Messages;
+
+import static java.security.AccessController.doPrivileged;
 
 /**
  * Compatibility class.
@@ -51,6 +62,8 @@ public final class InitialContextFactory implements javax.naming.spi.InitialCont
     @Deprecated
     public static final String REALM_KEY = "jboss.naming.client.security.realm";
 
+    private static final String CLIENT_PROPS_FILE_NAME = "jboss-naming-client.properties";
+
     private final WildFlyInitialContextFactory delegate = new WildFlyInitialContextFactory();
 
     /**
@@ -61,6 +74,70 @@ public final class InitialContextFactory implements javax.naming.spi.InitialCont
      * @throws NamingException if an error occurs
      */
     public Context getInitialContext(final Hashtable<?, ?> environment) throws NamingException {
-        return delegate.getInitialContext(environment);
+        return delegate.getInitialContext(findClientProperties(environment));
     }
+
+    private static ClassLoader getClientClassLoader() {
+        final ClassLoader tccl = secureGetContextClassLoader();
+        if (tccl != null) {
+            return tccl;
+        }
+        return InitialContextFactory.class.getClassLoader();
+    }
+
+    private Properties findClientProperties(final Hashtable<?, ?> env) throws ConfigurationException {
+        final Properties properties = new Properties();
+
+        // First load the props file if it exists
+        findAndPopulateClientProperties(properties);
+
+        // Now override with naming env entries
+        for (Map.Entry<?, ?> entry : env.entrySet()) {
+            if (entry.getKey() instanceof String && entry.getValue() instanceof String) {
+                properties.setProperty((String) entry.getKey(), (String) entry.getValue());
+            }
+        }
+
+        return properties;
+    }
+
+    private void findAndPopulateClientProperties(final Properties props) throws ConfigurationException {
+        final ClassLoader classLoader = getClientClassLoader();
+        Messages.log.debug("Looking for " + CLIENT_PROPS_FILE_NAME + " using classloader " + classLoader);
+
+        // find from classloader
+        InputStream clientPropsInputStream = classLoader.getResourceAsStream(CLIENT_PROPS_FILE_NAME);
+
+        if (clientPropsInputStream != null) {
+            Messages.log.debug("Found " + CLIENT_PROPS_FILE_NAME + " using classloader " + classLoader);
+            Messages.log.oldClientPropertyFileDeprecated();
+            try (InputStreamReader reader = new InputStreamReader(clientPropsInputStream, StandardCharsets.UTF_8);
+                 BufferedReader bufferedReader = new BufferedReader(reader)) {
+                final Properties clientProps = new Properties();
+                clientProps.load(bufferedReader);
+                // now populate the props with loaded client properties
+                props.putAll(clientProps);
+            } catch (IOException e) {
+                final ConfigurationException ce = new ConfigurationException("Could not load " + CLIENT_PROPS_FILE_NAME);
+                ce.initCause(e);
+                throw ce;
+            }
+        }
+    }
+
+    private static ClassLoader secureGetContextClassLoader() {
+        final ClassLoader contextClassLoader;
+        final SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            contextClassLoader = doPrivileged((PrivilegedAction<ClassLoader>) InitialContextFactory::getContextClassLoader);
+        } else {
+            contextClassLoader = getContextClassLoader();
+        }
+        return contextClassLoader == null ? InitialContextFactory.class.getClassLoader() : contextClassLoader;
+    }
+
+    private static ClassLoader getContextClassLoader() {
+        return Thread.currentThread().getContextClassLoader();
+    }
+
 }
