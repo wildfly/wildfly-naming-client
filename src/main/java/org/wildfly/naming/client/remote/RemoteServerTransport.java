@@ -22,6 +22,8 @@ import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
 import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
+import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
+import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
@@ -52,6 +54,7 @@ import org.wildfly.naming.client._private.Messages;
  * The server side of the remote naming transport protocol.
  *
  * @author <a href="mailto:fjuma@redhat.com">Farah Juma</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 final class RemoteServerTransport implements RemoteTransport {
     private final MarshallingConfiguration configuration;
@@ -89,14 +92,25 @@ final class RemoteServerTransport implements RemoteTransport {
     public void start() {
         channel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
-                safeClose(channel);
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    safeClose(channel);
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleEnd(final Channel channel) {
-                safeClose(channel);
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    safeClose(channel);
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
+                final ClassLoader oldCL = getAndSetSafeTCCL();
                 try (MessageInputStream mis = message) {
                     final byte messageId = mis.readByte();
                     final int id = readId(mis, version);
@@ -153,6 +167,7 @@ final class RemoteServerTransport implements RemoteTransport {
                     Messages.log.unexpectedError(t);
                 } finally {
                     channel.receiveMessage(this);
+                    resetTCCL(oldCL);
                 }
             }
         });
