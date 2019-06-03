@@ -22,6 +22,8 @@ import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
 import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
+import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
+import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
 import static org.wildfly.naming.client.util.NamingUtils.namingException;
 import static org.xnio.IoUtils.safeClose;
 
@@ -64,6 +66,7 @@ import org.xnio.IoFuture;
  * The client side of the remote naming transport protocol.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 final class RemoteClientTransport implements RemoteTransport {
     static final ClientServiceHandle<RemoteClientTransport> SERVICE_HANDLE = new ClientServiceHandle<>(ProtocolUtils.NAMING, RemoteClientTransport::construct);
@@ -105,14 +108,25 @@ final class RemoteClientTransport implements RemoteTransport {
         FutureResult<RemoteClientTransport> futureResult = new FutureResult<>(channel.getConnection().getEndpoint().getXnioWorker());
         channel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
-                futureResult.setException(error);
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    futureResult.setException(error);
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleEnd(final Channel channel) {
-                futureResult.setCancelled();
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    futureResult.setCancelled();
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
+                final ClassLoader oldCL = getAndSetSafeTCCL();
                 // this should be the greeting message, get the version list and start from there
                 try (MessageInputStream mis = message) {
                     final byte[] namingHeader = new byte[ProtocolUtils.NAMING_BYTES.length];
@@ -167,7 +181,8 @@ final class RemoteClientTransport implements RemoteTransport {
                 } catch (IOException e) {
                     safeClose(channel);
                     futureResult.setException(new IOException(Messages.log.connectFailed(e)));
-                    return;
+                } finally {
+                    resetTCCL(oldCL);
                 }
             }
         });
@@ -185,14 +200,25 @@ final class RemoteClientTransport implements RemoteTransport {
     void start() {
         channel.receiveMessage(new Channel.Receiver() {
             public void handleError(final Channel channel, final IOException error) {
-                safeClose(channel);
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    safeClose(channel);
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleEnd(final Channel channel) {
-                safeClose(channel);
+                final ClassLoader oldCL = getAndSetSafeTCCL();
+                try {
+                    safeClose(channel);
+                } finally {
+                    resetTCCL(oldCL);
+                }
             }
 
             public void handleMessage(final Channel channel, final MessageInputStream message) {
+                final ClassLoader oldCL = getAndSetSafeTCCL();
                 try {
                     final int messageId = message.readUnsignedByte();
                     final int id = readId(message, version);
@@ -206,6 +232,8 @@ final class RemoteClientTransport implements RemoteTransport {
                 } catch (IOException e) {
                     safeClose(channel);
                     safeClose(message);
+                } finally {
+                    resetTCCL(oldCL);
                 }
             }
         });
