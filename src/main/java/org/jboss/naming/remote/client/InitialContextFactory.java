@@ -96,6 +96,9 @@ public final class InitialContextFactory implements javax.naming.spi.InitialCont
             if (entry.getKey() instanceof String && entry.getValue() instanceof String) {
                 properties.setProperty((String) entry.getKey(), (String) entry.getValue());
             }
+            if (entry.getKey() instanceof String && entry.getValue() instanceof Number) {
+                properties.setProperty((String) entry.getKey(), String.valueOf(entry.getValue()));
+            }
         }
 
         return properties;

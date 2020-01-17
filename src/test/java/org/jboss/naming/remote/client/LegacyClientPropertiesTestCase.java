@@ -11,9 +11,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
  */
 
-package jboss.naming.remote.client;
+package org.jboss.naming.remote.client;
 
-import org.jboss.naming.remote.client.InitialContextFactory;
 import org.junit.Assert;
 import org.junit.Test;
 
