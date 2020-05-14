@@ -3,6 +3,7 @@ package org.wildfly.naming.client.remote;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.function.Function;
 
 import org.jboss.remoting3.Endpoint;
 import org.jboss.remoting3.EndpointBuilder;
@@ -26,6 +27,15 @@ import org.xnio.channels.AcceptingChannel;
  */
 public class TestServer {
 
+    /*
+     * Reject unmarshalling an instance of IAE, as a kind of 'blacklist'.
+     * In normal tests this type would never be sent, which is analogous to
+     * how blacklisted classes are normally not sent. And then we can
+     * deliberately send an IAE in tests to confirm it is rejected.
+     */
+    private static final Function<String, Boolean> DEFAULT_CLASS_FILTER = cName -> !cName.equals(IllegalArgumentException.class.getName());
+
+
     private String endpointName;
     private Endpoint endpoint;
     private String host;
@@ -47,7 +57,7 @@ public class TestServer {
         this.endpoint = endpointBuilder.build();
 
 
-        RemoteNamingService service = new RemoteNamingService(new FlatMockContext());
+        RemoteNamingService service = new RemoteNamingService(new FlatMockContext(), DEFAULT_CLASS_FILTER);
         service.start(endpoint);
 
         // set up a security realm called default with a user called test

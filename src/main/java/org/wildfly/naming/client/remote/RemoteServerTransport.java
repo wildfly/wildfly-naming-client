@@ -27,8 +27,10 @@ import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
 import static org.xnio.IoUtils.safeClose;
 
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 import javax.management.RuntimeMBeanException;
 import javax.naming.Binding;
@@ -67,14 +69,15 @@ final class RemoteServerTransport implements RemoteTransport {
         Version.getVersion();
     }
 
-    RemoteServerTransport(final Channel channel, final int version, final MessageTracker messageTracker, final Context localContext) {
+    RemoteServerTransport(final Channel channel, final int version, final MessageTracker messageTracker,
+                          final Context localContext, final Function<String, Boolean> classResolverFilter) {
         this.channel = channel;
         this.version = version;
         this.messageTracker = messageTracker;
         this.localContext = localContext;
         this.configuration = new MarshallingConfiguration();
         configuration.setVersion(version == 2 ? 4 : 2);
-        configuration.setClassResolver(new ContextClassResolver());
+        configuration.setClassResolver(classResolverFilter != null ? new FilterClassResolver(classResolverFilter) : new ContextClassResolver());
     }
 
     public Connection getConnection() {
@@ -497,6 +500,34 @@ final class RemoteServerTransport implements RemoteTransport {
             writeExceptionResponse(e, messageId, id);
         } catch (IOException ioe) {
             Messages.log.failedToSendExceptionResponse(ioe);
+        }
+    }
+
+    private static class FilterClassResolver extends ContextClassResolver {
+        private final Function<String, Boolean> filter;
+
+        private FilterClassResolver(Function<String, Boolean> filter) {
+            this.filter = filter;
+        }
+
+        @Override
+        public Class<?> resolveClass(Unmarshaller unmarshaller, String name, long serialVersionUID) throws IOException, ClassNotFoundException {
+            checkFilter(name);
+            return super.resolveClass(unmarshaller, name, serialVersionUID);
+        }
+
+        @Override
+        public Class<?> resolveProxyClass(Unmarshaller unmarshaller, String[] interfaces) throws IOException, ClassNotFoundException {
+            for (String name : interfaces) {
+                checkFilter(name);
+            }
+            return super.resolveProxyClass(unmarshaller, interfaces);
+        }
+
+        private void checkFilter(String className) throws InvalidClassException {
+            if (filter.apply(className) != Boolean.TRUE) {
+                throw Messages.log.cannotResolveFilteredClass(className);
+            }
         }
     }
 

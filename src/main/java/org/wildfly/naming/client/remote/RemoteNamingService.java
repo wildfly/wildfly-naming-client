@@ -21,6 +21,7 @@ package org.wildfly.naming.client.remote;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
 import javax.naming.CommunicationException;
 import javax.naming.Context;
@@ -49,9 +50,15 @@ public class RemoteNamingService {
     private static final int[] SUPPORTED_PROTOCOL_VERSIONS = new int[] { 1, 2 };
     private final Context localContext;
     private Registration registration;
+    private final Function<String, Boolean> classResolverFilter;
 
     public RemoteNamingService(final Context localContext) {
+        this(localContext, null);
+    }
+
+    public RemoteNamingService(final Context localContext, final Function<String, Boolean> classResolverFilter) {
         this.localContext = localContext;
+        this.classResolverFilter = classResolverFilter;
     }
 
     public void start(final Endpoint endpoint) throws IOException {
@@ -94,7 +101,7 @@ public class RemoteNamingService {
                                     Messages.log.unexpectedError(e);
                                 }
                             }
-                            final RemoteServerTransport remoteServerTransport = new RemoteServerTransport(channel, version, messageTracker, localContext);
+                            final RemoteServerTransport remoteServerTransport = new RemoteServerTransport(channel, version, messageTracker, localContext, classResolverFilter);
                             final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
                             ObjectResolver resolver = null;
                             for (MarshallingCompatibilityHelper helper : helpers) {
