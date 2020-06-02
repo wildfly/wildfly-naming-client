@@ -23,6 +23,7 @@ import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
+import java.io.InvalidClassException;
 import java.net.URI;
 import java.util.ServiceConfigurationError;
 
@@ -249,4 +250,7 @@ public interface Messages extends BasicLogger {
     @LogMessage(level = Logger.Level.INFO)
     @Message(id = 57, value = "jboss-naming-client.properties is deprecated; new applications should use org.wildfly.naming.client.WildFlyInitialContextFactory instead")
     void oldClientPropertyFileDeprecated();
+
+    @Message(id = 58, value = "Exception resolving class %s for unmarshalling; it has either been blacklisted or not whitelisted")
+    InvalidClassException cannotResolveFilteredClass(String clazz);
 }
