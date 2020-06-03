@@ -33,7 +33,7 @@ public class TestServer {
      * how blacklisted classes are normally not sent. And then we can
      * deliberately send an IAE in tests to confirm it is rejected.
      */
-    private static final Function<String, Boolean> DEFAULT_CLASS_FILTER = cName -> !cName.equals(IllegalArgumentException.class.getName());
+    private static final Function<String, Boolean> DEFAULT_CLASS_FILTER = cName -> cName.startsWith("javax.naming.");
 
 
     private String endpointName;

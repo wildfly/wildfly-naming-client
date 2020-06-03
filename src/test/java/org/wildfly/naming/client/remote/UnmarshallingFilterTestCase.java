@@ -17,6 +17,7 @@
  */
 package org.wildfly.naming.client.remote;
 
+import javax.naming.CompositeName;
 import javax.naming.InitialContext;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
@@ -25,6 +26,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.wildfly.naming.client.SimpleName;
 import org.wildfly.naming.client.WildFlyInitialContextFactory;
 import org.wildfly.naming.client.WildFlyRootContext;
 import org.wildfly.naming.client.util.FastHashtable;
@@ -63,17 +65,17 @@ public class UnmarshallingFilterTestCase {
         } catch (NamingException good) {
             // good
         }
-        bindOnServer("unmarshal", new IllegalStateException(), false);
-        Assert.assertEquals(IllegalStateException.class, lookupOnServer("unmarshal").getClass());
+        bindOnServer("unmarshal", new CompositeName("foo"), false);
+        Assert.assertEquals(CompositeName.class, lookupOnServer("unmarshal").getClass());
         try {
             bindOnServer("unmarshal", new IllegalArgumentException(), true);
             //Assert.fail("Should not be able to rebind an IAE"); // failure doesn't result in an exception!
-            Assert.assertEquals(IllegalStateException.class, lookupOnServer("unmarshal").getClass());
+            Assert.assertEquals(CompositeName.class, lookupOnServer("unmarshal").getClass());
         } catch (NamingException good) {
             // good
         }
-        bindOnServer("unmarshal", new IllegalStateException(), true);
-        Assert.assertEquals(IllegalStateException.class, lookupOnServer("unmarshal").getClass());
+        bindOnServer("unmarshal", new CompositeName("bar"), true);
+        Assert.assertEquals(CompositeName.class, lookupOnServer("unmarshal").getClass());
 
     }
 
