@@ -23,7 +23,6 @@ import static junit.framework.Assert.assertEquals;
 import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.Hashtable;
-
 import javax.naming.Name;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
@@ -31,7 +30,6 @@ import javax.naming.NamingException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.wildfly.naming.client.ExhaustedDestinationsException;
 import org.wildfly.naming.client.ProviderEnvironment;
@@ -128,7 +126,7 @@ public class RemoteContextTestCase {
             Field providerEnvironment = context.getClass().getDeclaredField("providerEnvironment");
             providerEnvironment.setAccessible(true);
             ProviderEnvironment env = (ProviderEnvironment) providerEnvironment.get(context);
-            Assert.assertEquals(0, env.getBlackList().size());
+            Assert.assertEquals(0, env.getBlocklist().size());
 
         } finally {
             server2.stop();
@@ -154,9 +152,9 @@ public class RemoteContextTestCase {
         providerEnvironment.setAccessible(true);
         ProviderEnvironment env = (ProviderEnvironment) providerEnvironment.get(context);
 
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9897")));
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9896")));
-        Assert.assertEquals(2, env.getBlackList().size());
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9897")));
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9896")));
+        Assert.assertEquals(2, env.getBlocklist().size());
     }
 
     @Test
@@ -183,15 +181,15 @@ public class RemoteContextTestCase {
         providerEnvironment.setAccessible(true);
         ProviderEnvironment env = (ProviderEnvironment) providerEnvironment.get(context);
 
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9897")));
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9896")));
-        Assert.assertEquals(2, env.getBlackList().size());
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9897")));
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9896")));
+        Assert.assertEquals(2, env.getBlocklist().size());
 
         for (int i = 0; i < 10; i++) {
             NameNotFoundException e = null;
             try {
-                // Disable black-list to allow for random node distribution
-                env.getBlackList().clear();
+                // Disable blocklist to allow for random node distribution
+                env.getBlocklist().clear();
                 context.lookup("hello");
             } catch (NameNotFoundException o) {
                 e = o;
@@ -224,10 +222,10 @@ public class RemoteContextTestCase {
         providerEnvironment.setAccessible(true);
         ProviderEnvironment env = (ProviderEnvironment) providerEnvironment.get(context);
 
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9897")));
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9896")));
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9899")));
-        Assert.assertEquals(3, env.getBlackList().size());
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9897")));
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9896")));
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9899")));
+        Assert.assertEquals(3, env.getBlocklist().size());
     }
 
     @Test
@@ -253,9 +251,9 @@ public class RemoteContextTestCase {
         providerEnvironment.setAccessible(true);
         ProviderEnvironment env = (ProviderEnvironment) providerEnvironment.get(context);
 
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9897")));
-        Assert.assertTrue(env.getBlackList().containsKey(new URI("remote://localhost:9896")));
-        Assert.assertEquals(2, env.getBlackList().size());
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9897")));
+        Assert.assertTrue(env.getBlocklist().containsKey(new URI("remote://localhost:9896")));
+        Assert.assertEquals(2, env.getBlocklist().size());
 
         t = null;
         try {
@@ -266,11 +264,11 @@ public class RemoteContextTestCase {
 
         Assert.assertNotNull(t);
 
-        // This case the black list should have prevented the attempt
+        // This case the blocklist should have prevented the attempt
         Assert.assertTrue(t.getSuppressed() == null || t.getSuppressed().length == 0);
 
         // Force expire
-        env.getBlackList().replace(new URI("remote://localhost:9896"), System.currentTimeMillis());
+        env.getBlocklist().replace(new URI("remote://localhost:9896"), System.currentTimeMillis());
         TestServer server = new TestServer("test2", "localhost", 9896);
         server.start();
 
@@ -285,9 +283,9 @@ public class RemoteContextTestCase {
             server.stop();
         }
 
-        // Black-list should be gone now
+        // blocklist should be gone now
         Assert.assertEquals("there", result);
-        Assert.assertFalse(env.getBlackList().containsKey(new URI("remote://localhost:9896")));
+        Assert.assertFalse(env.getBlocklist().containsKey(new URI("remote://localhost:9896")));
     }
 
     @Test

@@ -62,7 +62,7 @@ public final class RetryContext {
     /**
      * Indicates whether the specified destination has been registered as
      * failing as part of this invocation. Note that this will only return true
-     * for destinations that have transiently failed. If there is a blacklist
+     * for destinations that have transiently failed. If there is a blocklist
      * entry for a destination, then it is not recorded as a transient failure.
      *
      * @param destination the destination to check
@@ -76,7 +76,7 @@ public final class RetryContext {
      * Registers a destination as having transiently failed. Destinations
      * that have transiently failed should not be retried in the
      * corresponding invocation of this context. However, future invocations
-     * should retry, unlike a black-listed destination, which instead utilizes
+     * should retry, unlike a blocklisted destination, which instead utilizes
      * time-based back-off.
      *
      * @param destination the destination to record a transient failure
@@ -100,7 +100,7 @@ public final class RetryContext {
 
     /**
      * Gets a list of exceptions for failures that have occurred while retrying
-     * this invocation. Note that this list may include both black-listed and
+     * this invocation. Note that this list may include both blocklisted and
      * transient failures, and is not necessarily exhaustive. This list is
      * purely intended for informational error-reporting. Callers should not
      * make assumptions based on the content of it.

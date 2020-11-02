@@ -74,14 +74,14 @@ public interface NamingProvider extends AutoCloseable {
      */
     default PeerIdentity getPeerIdentityForNamingUsingRetry(RetryContext context) throws NamingException {
         final ProviderEnvironment environment = getProviderEnvironment();
-        final ConcurrentMap<URI, Long> blackList = environment.getBlackList();
+        final ConcurrentMap<URI, Long> blocklist = environment.getBlocklist();
         List<URI> locations = environment.getProviderUris();
 
-        if (context != null && (blackList.size() > 0 || context.transientFailCount() > 0)) {
+        if (context != null && (blocklist.size() > 0 || context.transientFailCount() > 0)) {
             long time = System.currentTimeMillis();
             List<URI> updated = new ArrayList<>(locations.size());
             for (URI location : locations) {
-                Long timeout = blackList.get(location);
+                Long timeout = blocklist.get(location);
                 if ((timeout == null || time >= (timeout & TIME_MASK)) && !context.hasTransientlyFailed(location)) {
                     updated.add(location);
                 }
@@ -133,9 +133,9 @@ public interface NamingProvider extends AutoCloseable {
         }
 
         final ProviderEnvironment env = getProviderEnvironment();
-        int blacklisted = env.getBlackList().size();
+        int blocklisted = env.getBlocklist().size();
         int transientlyFailed = context.transientFailCount();
-        ExhaustedDestinationsException exception = Messages.log.noMoreDestinations(blacklisted, transientlyFailed);
+        ExhaustedDestinationsException exception = Messages.log.noMoreDestinations(blocklisted, transientlyFailed);
         for (Throwable failure : context.getFailures()) {
             exception.addSuppressed(failure);
         }

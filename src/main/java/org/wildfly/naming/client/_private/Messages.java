@@ -241,8 +241,8 @@ public interface Messages extends BasicLogger {
     @Message(id = 54, value = "Ignoring duplicate destination URI \"%s\"")
     void ignoringDuplicateDestination(URI uri);
 
-    @Message(id = 55, value = "No more destinations are available to attempt the operation (%d blacklisted, %d transiently failed). See suppressed exceptions for details")
-    ExhaustedDestinationsException noMoreDestinations(int blacklisted, int transientlyFailed);
+    @Message(id = 55, value = "No more destinations are available to attempt the operation (%d blocklisted, %d transiently failed). See suppressed exceptions for details")
+    ExhaustedDestinationsException noMoreDestinations(int blocklisted, int transientlyFailed);
 
     @Message(id = 56, value = "No more destinations are available to attempt the operation.")
     ExhaustedDestinationsException noMoreDestinations();
@@ -251,6 +251,6 @@ public interface Messages extends BasicLogger {
     @Message(id = 57, value = "jboss-naming-client.properties is deprecated; new applications should use org.wildfly.naming.client.WildFlyInitialContextFactory instead")
     void oldClientPropertyFileDeprecated();
 
-    @Message(id = 58, value = "Exception resolving class %s for unmarshalling; it has either been blacklisted or not whitelisted")
+    @Message(id = 58, value = "Exception resolving class %s for unmarshalling; it has either been blocklisted or not allowlisted")
     InvalidClassException cannotResolveFilteredClass(String clazz);
 }
