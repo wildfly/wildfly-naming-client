@@ -103,7 +103,7 @@ final class RemoteContext extends AbstractFederatingContext {
         for (int notFound = 0;;) {
             try {
                 R result = provider.performExceptionAction(function, context, name, param);
-                environment.dropFromBlacklist(context.currentDestination());
+                environment.dropFromBlocklist(context.currentDestination());
                 return result;
             } catch (NameNotFoundException e) {
                 if (notFound++ > MAX_NOT_FOUND_RETRY) {
@@ -121,14 +121,14 @@ final class RemoteContext extends AbstractFederatingContext {
             } catch (CommunicationException t) {
                 URI location = context.currentDestination();
                 Messages.log.tracef(t, "Communication error while contacting %s", location);
-                updateBlackList(environment, context, t);
+                updateBlocklist(environment, context, t);
                 context.addFailure(injectDestination(t, location));
             } catch (NamingException e) {
                 // All other naming exceptions are legit errors
-                environment.dropFromBlacklist(context.currentDestination());
+                environment.dropFromBlocklist(context.currentDestination());
                 throw e;
             } catch (Throwable t) {
-                // Don't black-list generic throwables since it may indicate a client bug
+                // Don't blocklist generic throwables since it may indicate a client bug
                 URI location = context.currentDestination();
                 Messages.log.tracef(t, "Unexpected throwable while contacting %s", location);
                 context.addTransientFail(location);
@@ -155,10 +155,10 @@ final class RemoteContext extends AbstractFederatingContext {
         return t;
     }
 
-    private void updateBlackList(ProviderEnvironment environment, RetryContext context, Throwable t) {
+    private void updateBlocklist(ProviderEnvironment environment, RetryContext context, Throwable t) {
         URI location = context.currentDestination();
-        Messages.log.tracef(t, "Provider (%s) failed, blacklisting and retrying", location);
-        environment.updateBlacklist(location);
+        Messages.log.tracef(t, "Provider (%s) failed, blocklisting and retrying", location);
+        environment.updateBlocklist(location);
     }
 
     Name getRealName(Name name) throws InvalidNameException {

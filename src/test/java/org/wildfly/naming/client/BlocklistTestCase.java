@@ -25,11 +25,11 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /**
- * Simple test to verify black-list backoff
+ * Simple test to verify blocklist backoff
  *
  * @author Jason T. Greene
  */
-public class BlackListTestCase {
+public class BlocklistTestCase {
 
     @Test
     public void testBackOff() throws Exception {
@@ -37,14 +37,14 @@ public class BlackListTestCase {
         ProviderEnvironment env = builder.build();
         URI foo = new URI("remote://foo");
 
-        Assert.assertFalse(env.getBlackList().containsKey(foo));
+        Assert.assertFalse(env.getBlocklist().containsKey(foo));
 
 
         for (int i = 0; i < 14; i++) {
             long currentTime = System.currentTimeMillis();
-            env.updateBlacklist(foo);
+            env.updateBlocklist(foo);
 
-            Long entry = env.getBlackList().get(foo);
+            Long entry = env.getBlocklist().get(foo);
             Assert.assertNotNull(entry);
 
             int difference = (int) ((entry & TIME_MASK) - currentTime);
@@ -59,9 +59,9 @@ public class BlackListTestCase {
         // Verify backoff progression stops at 6 days
         for (int i = 15; i < 30; i++) {
             long currentTime = System.currentTimeMillis();
-            env.updateBlacklist(foo);
+            env.updateBlocklist(foo);
 
-            Long entry = env.getBlackList().get(foo);
+            Long entry = env.getBlocklist().get(foo);
             Assert.assertNotNull(entry);
 
             int difference = (int) ((entry & TIME_MASK) - currentTime);
