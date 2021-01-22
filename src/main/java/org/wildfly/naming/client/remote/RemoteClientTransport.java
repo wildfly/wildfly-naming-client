@@ -321,8 +321,27 @@ final class RemoteClientTransport implements RemoteTransport {
                     }
                 }
             }
-            // no content
-            invocation.getResponse().getInputStream().close();
+            // check responses
+            final BlockingInvocation.Response response = invocation.getResponse();
+            try (MessageInputStream is = response.getInputStream()) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to bind", exception);
+                        }
+                    }
+                } else {
+                    throw Messages.log.invalidResponse();
+                }
+            } catch (IOException ioe) {
+                // no content on success.
+            }
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to bind", e);
         } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
@@ -354,8 +373,27 @@ final class RemoteClientTransport implements RemoteTransport {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
                 }
             }
-            // no response content
-            invocation.getResponse().getInputStream().close();
+            // check responses
+            final BlockingInvocation.Response response = invocation.getResponse();
+            try (MessageInputStream is = response.getInputStream()) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to unbind", exception);
+                        }
+                    }
+                } else {
+                    throw Messages.log.invalidResponse();
+                }
+            } catch (IOException ioe) {
+                // no content on success.
+            }
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to unbind", e);
         } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
@@ -389,8 +427,27 @@ final class RemoteClientTransport implements RemoteTransport {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(newName).toString());
                 }
             }
-            // no response content
-            invocation.getResponse().getInputStream().close();
+            // check responses
+            final BlockingInvocation.Response response = invocation.getResponse();
+            try (MessageInputStream is = response.getInputStream()) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to rename", exception);
+                        }
+                    }
+                } else {
+                    throw Messages.log.invalidResponse();
+                }
+            } catch (IOException ioe) {
+                // no content on success.
+            }
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to rename", e);
         } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
@@ -422,8 +479,27 @@ final class RemoteClientTransport implements RemoteTransport {
                     messageOutputStream.writeUTF(NamingUtils.toCompositeName(name).toString());
                 }
             }
-            // no response content
-            invocation.getResponse().getInputStream().close();
+            // check responses
+            final BlockingInvocation.Response response = invocation.getResponse();
+            try (MessageInputStream is = response.getInputStream()) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to destroySubcontext", exception);
+                        }
+                    }
+                } else {
+                    throw Messages.log.invalidResponse();
+                }
+            } catch (IOException ioe) {
+                // no content on success.
+            }
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to destroySubcontext", e);
         } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {
@@ -455,8 +531,27 @@ final class RemoteClientTransport implements RemoteTransport {
                     messageOutputStream.writeUTF(compositeName.toString());
                 }
             }
-            // no response content
-            invocation.getResponse().getInputStream().close();
+            // check responses
+            final BlockingInvocation.Response response = invocation.getResponse();
+            try (MessageInputStream is = response.getInputStream()) {
+                final int parameterType = is.readUnsignedByte();
+                if (parameterType == Protocol.P_EXCEPTION) {
+                    try (Unmarshaller unmarshaller = createUnmarshaller(is, configuration)) {
+                        final Exception exception = unmarshaller.readObject(Exception.class);
+                        if (exception instanceof NamingException) {
+                            throw (NamingException) exception;
+                        } else {
+                            throw namingException("Failed to createSubcontext", exception);
+                        }
+                    }
+                } else {
+                    throw Messages.log.invalidResponse();
+                }
+            } catch (IOException ioe) {
+                // no content on success.
+            }
+        } catch (ClassNotFoundException e) {
+            throw namingException("Failed to createSubcontext", e);
         } catch (IOException e) {
             throw Messages.log.operationFailed(e);
         } catch (InterruptedException e) {

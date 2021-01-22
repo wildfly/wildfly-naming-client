@@ -24,6 +24,7 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.Hashtable;
 import javax.naming.Name;
+import javax.naming.NameAlreadyBoundException;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingException;
 
@@ -144,7 +145,11 @@ public class RemoteContextTestCase {
         WildFlyRootContext context = new WildFlyRootContext(props);
 
         for (int i = 0; i < 10; i++) {
-            context.bind("hello", "there");
+            try {
+                context.bind("hello", "there");
+            } catch (NameAlreadyBoundException e) {
+                //ignore
+            }
             Assert.assertEquals("there", context.lookup("hello"));
         }
 
