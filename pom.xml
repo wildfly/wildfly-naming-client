@@ -75,7 +75,7 @@
         <dependency>
             <groupId>org.wildfly.common</groupId>
             <artifactId>wildfly-common</artifactId>
-            <version>1.2.0.Final</version>
+            <version>1.5.4.Final</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.client</groupId>
@@ -85,7 +85,7 @@
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron</artifactId>
-            <version>1.1.0.Final</version>
+            <version>1.15.4.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
@@ -123,7 +123,7 @@
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>5.0.0.Final</version>
+            <version>5.0.23.Final</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>

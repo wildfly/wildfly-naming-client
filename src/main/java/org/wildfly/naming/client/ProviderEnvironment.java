@@ -61,7 +61,7 @@ import org.wildfly.security.auth.client.AuthenticationContext;
 import org.wildfly.security.auth.client.MatchRule;
 import org.wildfly.security.auth.server.IdentityCredentials;
 import org.wildfly.security.sasl.localuser.LocalUserClient;
-import org.wildfly.security.util.CodePointIterator;
+import org.wildfly.common.iteration.CodePointIterator;
 import org.xnio.Option;
 import org.xnio.OptionMap;
 import org.xnio.Options;
