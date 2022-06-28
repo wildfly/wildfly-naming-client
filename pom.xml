@@ -28,19 +28,9 @@
         <version>19</version>
     </parent>
 
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <version.org.jboss.marshalling>2.1.0.Final</version.org.jboss.marshalling>
-        <version.org.jboss.threads>2.2.1.Final</version.org.jboss.threads>
-        <version.org.jboss.xnio>3.5.1.Final</version.org.jboss.xnio>
-        <version.org.wildfly.security.elytron>1.17.1.Final</version.org.wildfly.security.elytron>
-    </properties>
-
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client</artifactId>
     <version>1.0.16.Final-SNAPSHOT</version>
-
     <name>WildFly Naming Client</name>
 
     <licenses>
@@ -50,6 +40,24 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <version.junit>4.13.1</version.junit>
+        <version.org.jboss.jdeparser>2.0.2.Final</version.org.jboss.jdeparser>
+        <version.org.jboss.logging.jboss-logging>3.3.1.Final</version.org.jboss.logging.jboss-logging>
+        <version.org.jboss.logging.jboss-logging-annotations>2.1.0.Final</version.org.jboss.logging.jboss-logging-annotations>
+        <version.org.jboss.logging.jboss-logging-processor>2.1.0.Final</version.org.jboss.logging.jboss-logging-processor>
+        <version.org.jboss.marshalling>2.1.0.Final</version.org.jboss.marshalling>
+        <version.org.jboss.remoting>5.0.23.Final</version.org.jboss.remoting>
+        <version.org.jboss.threads>2.2.1.Final</version.org.jboss.threads>
+        <version.org.jboss.xnio>3.5.1.Final</version.org.jboss.xnio>
+        <version.org.kohsuke>1.7</version.org.kohsuke>
+        <version.org.wildfly.client>1.0.0.Final</version.org.wildfly.client>
+        <version.org.wildfly.common>1.5.4.Final</version.org.wildfly.common>
+        <version.org.wildfly.security.elytron>1.17.1.Final</version.org.wildfly.security.elytron>
+    </properties>
 
     <build>
         <resources>
@@ -75,14 +83,67 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.wildfly.common</groupId>
-            <artifactId>wildfly-common</artifactId>
-            <version>1.5.4.Final</version>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging</artifactId>
+            <version>${version.org.jboss.logging.jboss-logging}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging-annotations</artifactId>
+            <version>${version.org.jboss.logging.jboss-logging-annotations}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>jboss-logging-processor</artifactId>
+            <version>${version.org.jboss.logging.jboss-logging-processor}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.jdeparser</groupId>
+            <artifactId>jdeparser</artifactId>
+            <version>${version.org.jboss.jdeparser}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.marshalling</groupId>
+            <artifactId>jboss-marshalling</artifactId>
+            <version>${version.org.jboss.marshalling}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.marshalling</groupId>
+            <artifactId>jboss-marshalling-river</artifactId>
+            <version>${version.org.jboss.marshalling}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.remoting</groupId>
+            <artifactId>jboss-remoting</artifactId>
+            <version>${version.org.jboss.remoting}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-api</artifactId>
+            <version>${version.org.jboss.xnio}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.xnio</groupId>
+            <artifactId>xnio-nio</artifactId>
+            <version>${version.org.jboss.xnio}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jboss.threads</groupId>
+            <artifactId>jboss-threads</artifactId>
+            <version>${version.org.jboss.threads}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.client</groupId>
             <artifactId>wildfly-client-config</artifactId>
-            <version>1.0.0.Final</version>
+            <version>${version.org.wildfly.client}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.wildfly.common</groupId>
+            <artifactId>wildfly-common</artifactId>
+            <version>${version.org.wildfly.common}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
@@ -144,74 +205,18 @@
             <artifactId>wildfly-elytron-util</artifactId>
             <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging</artifactId>
-            <version>3.3.1.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging-annotations</artifactId>
-            <version>2.1.0.Final</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.logging</groupId>
-            <artifactId>jboss-logging-processor</artifactId>
-            <version>2.1.0.Final</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.jdeparser</groupId>
-            <artifactId>jdeparser</artifactId>
-            <version>2.0.2.Final</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.marshalling</groupId>
-            <artifactId>jboss-marshalling</artifactId>
-            <version>${version.org.jboss.marshalling}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.marshalling</groupId>
-            <artifactId>jboss-marshalling-river</artifactId>
-            <version>${version.org.jboss.marshalling}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.remoting</groupId>
-            <artifactId>jboss-remoting</artifactId>
-            <version>5.0.23.Final</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.xnio</groupId>
-            <artifactId>xnio-api</artifactId>
-            <version>${version.org.jboss.xnio}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.xnio</groupId>
-            <artifactId>xnio-nio</artifactId>
-            <version>${version.org.jboss.xnio}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jboss.threads</groupId>
-            <artifactId>jboss-threads</artifactId>
-            <version>${version.org.jboss.threads}</version>
-        </dependency>
-
-
         <!-- JUnit -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.1</version>
+            <version>${version.junit}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.kohsuke.metainf-services</groupId>
             <artifactId>metainf-services</artifactId>
-            <version>1.7</version>
+            <version>${version.org.kohsuke}</version>
             <scope>provided</scope>
         </dependency>
-
     </dependencies>
 </project>
