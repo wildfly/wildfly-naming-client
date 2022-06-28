@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   ~ JBoss, Home of Professional Open Source.
-  ~ Copyright 2017 Red Hat, Inc., and individual contributors
+  ~ Copyright 2022 Red Hat, Inc., and individual contributors
   ~ as indicated by the @author tags.
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,207 +23,143 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.jboss</groupId>
-        <artifactId>jboss-parent</artifactId>
-        <version>19</version>
+        <groupId>org.wildfly</groupId>
+        <artifactId>wildfly-naming-client-parent</artifactId>
+        <relativePath>../pom.xml</relativePath>
+        <version>1.0.16.Final-SNAPSHOT</version>
     </parent>
 
     <groupId>org.wildfly</groupId>
-    <artifactId>wildfly-naming-client-parent</artifactId>
-    <version>1.0.16.Final-SNAPSHOT</version>
-    <name>WildFly Naming Client Parent</name>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>javax</module>
-    </modules>
-
-    <scm>
-        <connection>scm:git:git@github.com:wildfly/wildfly-naming-client.git</connection>
-        <developerConnection>scm:git:git@github.com:wildfly/wildfly-naming-client.git</developerConnection>
-        <url>https://github.com/wildfly/wildfly-naming-client</url>
-    </scm>
-
-    <licenses>
-        <license>
-            <name>Apache License 2.0</name>
-            <url>http://repository.jboss.org/licenses/apache-2.0.txt</url>
-            <distribution>repo</distribution>
-        </license>
-    </licenses>
-
-    <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <version.junit>4.13.1</version.junit>
-        <version.org.jboss.jdeparser>2.0.2.Final</version.org.jboss.jdeparser>
-        <version.org.jboss.logging.jboss-logging>3.3.1.Final</version.org.jboss.logging.jboss-logging>
-        <version.org.jboss.logging.jboss-logging-annotations>2.1.0.Final</version.org.jboss.logging.jboss-logging-annotations>
-        <version.org.jboss.logging.jboss-logging-processor>2.1.0.Final</version.org.jboss.logging.jboss-logging-processor>
-        <version.org.jboss.marshalling>2.1.0.Final</version.org.jboss.marshalling>
-        <version.org.jboss.remoting>5.0.23.Final</version.org.jboss.remoting>
-        <version.org.jboss.threads>2.2.1.Final</version.org.jboss.threads>
-        <version.org.jboss.xnio>3.5.1.Final</version.org.jboss.xnio>
-        <version.org.kohsuke>1.7</version.org.kohsuke>
-        <version.org.wildfly.client>1.0.0.Final</version.org.wildfly.client>
-        <version.org.wildfly.common>1.5.4.Final</version.org.wildfly.common>
-        <version.org.wildfly.security.elytron>1.17.1.Final</version.org.wildfly.security.elytron>
-    </properties>
+    <artifactId>wildfly-naming-client</artifactId>
+    <name>WildFly Naming Client - JavaEE Variant</name>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <compilerArgs>
-                            <arg>-Xlint:all</arg>
-                        </compilerArgs>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+        <resources>
+            <resource>
+                <directory>${project.build.sourceDirectory}</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 
-    <dependencyManagement>
-      <dependencies>
+    <dependencies>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>${version.org.jboss.logging.jboss-logging}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging-annotations</artifactId>
-            <version>${version.org.jboss.logging.jboss-logging-annotations}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging-processor</artifactId>
-            <version>${version.org.jboss.logging.jboss-logging-processor}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.jdeparser</groupId>
             <artifactId>jdeparser</artifactId>
-            <version>${version.org.jboss.jdeparser}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling</artifactId>
-            <version>${version.org.jboss.marshalling}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.marshalling</groupId>
             <artifactId>jboss-marshalling-river</artifactId>
-            <version>${version.org.jboss.marshalling}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.remoting</groupId>
             <artifactId>jboss-remoting</artifactId>
-            <version>${version.org.jboss.remoting}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-api</artifactId>
-            <version>${version.org.jboss.xnio}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.xnio</groupId>
             <artifactId>xnio-nio</artifactId>
-            <version>${version.org.jboss.xnio}</version>
         </dependency>
         <dependency>
             <groupId>org.jboss.threads</groupId>
             <artifactId>jboss-threads</artifactId>
-            <version>${version.org.jboss.threads}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.client</groupId>
             <artifactId>wildfly-client-config</artifactId>
-            <version>${version.org.wildfly.client}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.common</groupId>
             <artifactId>wildfly-common</artifactId>
-            <version>${version.org.wildfly.common}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-auth</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-auth-server</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-client</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-credential</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-security-manager-action</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-security-manager</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-permission</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-realm</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
          <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-sasl-anonymous</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-sasl-localuser</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-sasl-auth-util</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
         <dependency>
             <groupId>org.wildfly.security</groupId>
             <artifactId>wildfly-elytron-util</artifactId>
-            <version>${version.org.wildfly.security.elytron}</version>
         </dependency>
-        <!-- JUnit -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>${version.junit}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.kohsuke.metainf-services</groupId>
             <artifactId>metainf-services</artifactId>
-            <version>${version.org.kohsuke}</version>
-            <scope>provided</scope>
         </dependency>
-      </dependencies>
-    </dependencyManagement>
+    </dependencies>
 
 </project>
