@@ -18,6 +18,7 @@
 
 package org.wildfly.naming.client._private;
 
+import static org.jboss.logging.Logger.Level.DEBUG;
 import static org.jboss.logging.Logger.Level.ERROR;
 import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
@@ -253,4 +254,9 @@ public interface Messages extends BasicLogger {
 
     @Message(id = 58, value = "Exception resolving class %s for unmarshalling; it has either been blocklisted or not allowlisted")
     InvalidClassException cannotResolveFilteredClass(String clazz);
+
+    @LogMessage(level = DEBUG)
+    @Message(id = 59, value = "JavaEE to JakartaEE backward compatibility layer have been installed")
+    void javaeeToJakartaeeBackwardCompatibilityLayerInstalled();
+
 }

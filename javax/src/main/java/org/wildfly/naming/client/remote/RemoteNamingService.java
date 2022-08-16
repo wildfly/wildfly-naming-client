@@ -18,6 +18,8 @@
 
 package org.wildfly.naming.client.remote;
 
+import static java.lang.Math.min;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -47,7 +49,12 @@ import org.xnio.OptionMap;
  * @author <a href="mailto:fjuma@redhat.com">Farah Juma</a>
  */
 public class RemoteNamingService {
-    private static final int[] SUPPORTED_PROTOCOL_VERSIONS = new int[] { 1, 2 };
+    static final int JAVAEE_PROTOCOL_VERSION = 2;
+    static final int JAKARTAEE_PROTOCOL_VERSION = 3;
+    // Batavia transformer sensible constant - it can start with either "javax." or "jakarta." if transformation was performed
+    private static final String VARIABLE_CONSTANT = "javax.ejb.FAKE_STRING";
+    static final int LATEST_VERSION = VARIABLE_CONSTANT.startsWith("jakarta") ? JAKARTAEE_PROTOCOL_VERSION : JAVAEE_PROTOCOL_VERSION;
+    private static final int[] SUPPORTED_PROTOCOL_VERSIONS = LATEST_VERSION == JAKARTAEE_PROTOCOL_VERSION ? new int[] { 1, 2, 3 } : new int[] { 1, 2 };
     private final Context localContext;
     private Registration registration;
     private final Function<String, Boolean> classResolverFilter;
@@ -81,7 +88,7 @@ public class RemoteNamingService {
                             if (! Arrays.equals(namingHeader, ProtocolUtils.NAMING_BYTES)) {
                                 throw Messages.log.invalidHeader();
                             }
-                            int version = mis.readUnsignedByte();
+                            int version = min(LATEST_VERSION, mis.readUnsignedByte());
                             boolean versionSupported = false;
                             for (int supportedProtocolVersion : SUPPORTED_PROTOCOL_VERSIONS) {
                                 if (version == supportedProtocolVersion) {
