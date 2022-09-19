@@ -30,7 +30,7 @@
 
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client-parent</artifactId>
-    <version>1.0.16.Final</version>
+    <version>1.0.17.Final-SNAPSHOT</version>
     <name>WildFly Naming Client Parent</name>
     <packaging>pom</packaging>
 

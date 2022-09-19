@@ -26,7 +26,7 @@
         <groupId>org.wildfly</groupId>
         <artifactId>wildfly-naming-client-parent</artifactId>
         <relativePath>../pom.xml</relativePath>
-        <version>1.0.16.Final</version>
+        <version>1.0.17.Final-SNAPSHOT</version>
     </parent>
 
     <groupId>org.wildfly</groupId>
