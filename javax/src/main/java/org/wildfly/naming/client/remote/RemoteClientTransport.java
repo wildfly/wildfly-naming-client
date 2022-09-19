@@ -18,32 +18,6 @@
 
 package org.wildfly.naming.client.remote;
 
-import static java.lang.Math.min;
-import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
-import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
-import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
-import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
-import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
-import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
-import static org.wildfly.naming.client.util.NamingUtils.namingException;
-import static org.xnio.IoUtils.safeClose;
-import static org.wildfly.naming.client.remote.RemoteNamingService.JAKARTAEE_PROTOCOL_VERSION;
-import static org.wildfly.naming.client.remote.RemoteNamingService.JAVAEE_PROTOCOL_VERSION;
-import static org.wildfly.naming.client.remote.RemoteNamingService.LATEST_VERSION;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.IntUnaryOperator;
-
-import javax.naming.Binding;
-import javax.naming.CompositeName;
-import javax.naming.Name;
-import javax.naming.NameClassPair;
-import javax.naming.NamingException;
-
-import org.jboss.marshalling.ClassNameTransformer;
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -66,6 +40,25 @@ import org.wildfly.naming.client.util.NamingUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
+
+import javax.naming.Binding;
+import javax.naming.CompositeName;
+import javax.naming.Name;
+import javax.naming.NameClassPair;
+import javax.naming.NamingException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.IntUnaryOperator;
+
+import static java.lang.Math.min;
+import static org.wildfly.naming.client.remote.ProtocolUtils.*;
+import static org.wildfly.naming.client.remote.RemoteNamingService.*;
+import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
+import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
+import static org.wildfly.naming.client.util.NamingUtils.namingException;
+import static org.xnio.IoUtils.safeClose;
 
 /**
  * The client side of the remote naming transport protocol.
@@ -167,12 +160,7 @@ final class RemoteClientTransport implements RemoteTransport {
                     }
                     final MarshallingConfiguration configuration = new MarshallingConfiguration();
                     configuration.setVersion(version >= 2 ? 4 : 2);
-                    if (version < JAKARTAEE_PROTOCOL_VERSION && LATEST_VERSION >= JAKARTAEE_PROTOCOL_VERSION) {
-                        // JNDI client uses JNDI PROTOCOL version 3 or above but JNDI server uses JNDI PROTOCOL version 2 or below
-                        // so in this case we need to translate classes from JavaEE API to JakartaEE API and vice versa
-                        configuration.setClassNameTransformer(ClassNameTransformer.JAVAEE_TO_JAKARTAEE);
-                        Messages.log.javaeeToJakartaeeBackwardCompatibilityLayerInstalled();
-                    }
+                    EENamespaceInteroperability.handleInteroperability(configuration, version);
 
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
                     final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
