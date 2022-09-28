@@ -29,14 +29,9 @@
     </parent>
 
     <groupId>org.wildfly</groupId>
-    <artifactId>wildfly-naming-client-parent</artifactId>
+    <artifactId>wildfly-naming-client</artifactId>
     <version>1.1.0.Final-SNAPSHOT</version>
-    <name>WildFly Naming Client Parent</name>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>javax</module>
-    </modules>
+    <name>WildFly Naming Client - JakartaEE Variant</name>
 
     <scm>
         <connection>scm:git:git@github.com:wildfly/wildfly-naming-client.git</connection>
@@ -67,51 +62,32 @@
         <version.org.kohsuke>1.7</version.org.kohsuke>
         <version.org.wildfly.client>1.0.0.Final</version.org.wildfly.client>
         <version.org.wildfly.common>1.5.4.Final</version.org.wildfly.common>
-        <version.org.wildfly.extras.batavia>1.0.13.Final</version.org.wildfly.extras.batavia>
         <version.org.wildfly.security.elytron>1.17.1.Final</version.org.wildfly.security.elytron>
     </properties>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>org.wildfly.extras.batavia</groupId>
-                    <artifactId>transformer-tools-mvn</artifactId>
-                    <version>${version.org.wildfly.extras.batavia}</version>
-                    <executions>
-                        <execution>
-                            <id>transform-sources</id>
-                            <phase>generate-sources</phase>
-                            <goals>
-                                <goal>transform-sources</goal>
-                            </goals>
-                            <configuration>
-                                <source-project>${jakarta.transformer.input.dir}</source-project>
-                            </configuration>
-                        </execution>
-                    </executions>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.wildfly.extras.batavia</groupId>
-                            <artifactId>transformer-impl-eclipse</artifactId>
-                            <version>${version.org.wildfly.extras.batavia}</version>
-                        </dependency>
-                    </dependencies>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <compilerArgs>
-                            <arg>-Xlint:all</arg>
-                        </compilerArgs>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+        <resources>
+            <resource>
+                <directory>${project.build.sourceDirectory}</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
-    <dependencyManagement>
-      <dependencies>
+    <dependencies>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
@@ -248,7 +224,6 @@
             <version>${version.org.kohsuke}</version>
             <scope>provided</scope>
         </dependency>
-      </dependencies>
-    </dependencyManagement>
+    </dependencies>
 
 </project>
