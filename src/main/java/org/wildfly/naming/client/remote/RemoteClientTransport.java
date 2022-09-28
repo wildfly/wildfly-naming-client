@@ -171,7 +171,6 @@ final class RemoteClientTransport implements RemoteTransport {
                         // JNDI client uses JNDI PROTOCOL version 3 or above but JNDI server uses JNDI PROTOCOL version 2 or below
                         // so in this case we need to translate classes from JavaEE API to JakartaEE API and vice versa
                         configuration.setClassNameTransformer(ClassNameTransformer.JAVAEE_TO_JAKARTAEE);
-                        Messages.log.javaeeToJakartaeeBackwardCompatibilityLayerInstalled();
                     }
 
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
