@@ -18,7 +18,6 @@
 
 package org.wildfly.naming.client.remote;
 
-import static java.lang.Math.min;
 import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
@@ -27,9 +26,6 @@ import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
 import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
 import static org.wildfly.naming.client.util.NamingUtils.namingException;
 import static org.xnio.IoUtils.safeClose;
-import static org.wildfly.naming.client.remote.RemoteNamingService.JAKARTAEE_PROTOCOL_VERSION;
-import static org.wildfly.naming.client.remote.RemoteNamingService.JAVAEE_PROTOCOL_VERSION;
-import static org.wildfly.naming.client.remote.RemoteNamingService.LATEST_VERSION;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,7 +39,6 @@ import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NamingException;
 
-import org.jboss.marshalling.ClassNameTransformer;
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -141,24 +136,20 @@ final class RemoteClientTransport implements RemoteTransport {
                         return;
                     }
                     int length = mis.readUnsignedByte();
-                    boolean hasOne = false, hasTwo = false, hasThree = false;
+                    boolean hasOne = false, hasTwo = false;
                     for (int i = 0; i < length; i ++) {
                         // Servers present versions >= 2 with the MSB set so that old clients don't get confused.
                         // We strip the MSB to compensate.
-                        int v = min(LATEST_VERSION, mis.readUnsignedByte() & 0x7f);
+                        int v = mis.readUnsignedByte() & 0x7f;
                         if (v == 1) {
                             hasOne = true;
                         } else if (v == 2) {
                             hasTwo = true;
-                        } else if (v == 3) {
-                            hasThree = true;
                         }
                     }
                     int version;
-                    if (hasThree) {
-                        version = JAKARTAEE_PROTOCOL_VERSION;
-                    } else if (hasTwo) {
-                        version = JAVAEE_PROTOCOL_VERSION;
+                    if (hasTwo) {
+                        version = 2;
                     } else if (hasOne) {
                         version = 1;
                     } else {
@@ -166,13 +157,7 @@ final class RemoteClientTransport implements RemoteTransport {
                         return;
                     }
                     final MarshallingConfiguration configuration = new MarshallingConfiguration();
-                    configuration.setVersion(version >= 2 ? 4 : 2);
-                    if (version < JAKARTAEE_PROTOCOL_VERSION && LATEST_VERSION >= JAKARTAEE_PROTOCOL_VERSION) {
-                        // JNDI client uses JNDI PROTOCOL version 3 or above but JNDI server uses JNDI PROTOCOL version 2 or below
-                        // so in this case we need to translate classes from JavaEE API to JakartaEE API and vice versa
-                        configuration.setClassNameTransformer(ClassNameTransformer.JAVAEE_TO_JAKARTAEE);
-                    }
-
+                    configuration.setVersion(version == 2 ? 4 : 2);
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
                     final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
                     ObjectResolver resolver = null;

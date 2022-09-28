@@ -22,8 +22,6 @@ import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
 import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
 import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
-import static org.wildfly.naming.client.remote.RemoteNamingService.JAKARTAEE_PROTOCOL_VERSION;
-import static org.wildfly.naming.client.remote.RemoteNamingService.LATEST_VERSION;
 import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
 import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
 import static org.xnio.IoUtils.safeClose;
@@ -42,7 +40,6 @@ import javax.naming.NameClassPair;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
-import org.jboss.marshalling.ClassNameTransformer;
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -79,13 +76,8 @@ final class RemoteServerTransport implements RemoteTransport {
         this.messageTracker = messageTracker;
         this.localContext = localContext;
         this.configuration = new MarshallingConfiguration();
-        configuration.setVersion(version >= 2 ? 4 : 2);
+        configuration.setVersion(version == 2 ? 4 : 2);
         configuration.setClassResolver(classResolverFilter != null ? new FilterClassResolver(classResolverFilter) : new ContextClassResolver());
-        if (version < JAKARTAEE_PROTOCOL_VERSION && LATEST_VERSION >= JAKARTAEE_PROTOCOL_VERSION) {
-            // JNDI server uses JNDI PROTOCOL version 3 or above but JNDI client uses JNDI PROTOCOL version 2 or below
-            // so in this case we need to translate classes from JavaEE API to JakartaEE API and vice versa
-            configuration.setClassNameTransformer(ClassNameTransformer.JAVAEE_TO_JAKARTAEE);
-        }
     }
 
     public Connection getConnection() {
