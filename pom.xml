@@ -31,7 +31,7 @@
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client</artifactId>
     <version>1.0.17.Final-SNAPSHOT</version>
-    <name>WildFly Naming Client</name>
+    <name>WildFly Naming Client - JavaEE Variant</name>
 
     <scm>
         <connection>scm:git:git@github.com:wildfly/wildfly-naming-client.git</connection>
