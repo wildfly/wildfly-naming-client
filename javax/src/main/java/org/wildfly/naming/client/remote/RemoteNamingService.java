@@ -19,7 +19,6 @@
 package org.wildfly.naming.client.remote;
 
 import static java.lang.Math.min;
-import static org.wildfly.naming.client.remote.EENamespaceInteroperability.JAKARTAEE_ENVIRONMENT;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -52,8 +51,8 @@ import org.xnio.OptionMap;
 public class RemoteNamingService {
     static final int JAVAEE_PROTOCOL_VERSION = 2;
     static final int JAKARTAEE_PROTOCOL_VERSION = 3;
-    static final int LATEST_VERSION = JAKARTAEE_ENVIRONMENT ? JAKARTAEE_PROTOCOL_VERSION : JAVAEE_PROTOCOL_VERSION;
-    private static final int[] SUPPORTED_PROTOCOL_VERSIONS = LATEST_VERSION == JAKARTAEE_PROTOCOL_VERSION ? new int[] { 1, 2, 3 } : new int[] { 1, 2 };
+    static final int LATEST_VERSION = JAKARTAEE_PROTOCOL_VERSION;
+    private static final int[] SUPPORTED_PROTOCOL_VERSIONS = new int[] { 1, 2, 3 };
     private final Context localContext;
     private Registration registration;
     private final Function<String, Boolean> classResolverFilter;
