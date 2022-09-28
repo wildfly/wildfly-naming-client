@@ -29,14 +29,9 @@
     </parent>
 
     <groupId>org.wildfly</groupId>
-    <artifactId>wildfly-naming-client-parent</artifactId>
+    <artifactId>wildfly-naming-client</artifactId>
     <version>1.0.17.Final-SNAPSHOT</version>
-    <name>WildFly Naming Client Parent</name>
-    <packaging>pom</packaging>
-
-    <modules>
-        <module>javax</module>
-    </modules>
+    <name>WildFly Naming Client</name>
 
     <scm>
         <connection>scm:git:git@github.com:wildfly/wildfly-naming-client.git</connection>
@@ -71,22 +66,28 @@
     </properties>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <configuration>
-                        <compilerArgs>
-                            <arg>-Xlint:all</arg>
-                        </compilerArgs>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
+        <resources>
+            <resource>
+                <directory>${project.build.sourceDirectory}</directory>
+                <includes>
+                    <include>**/*.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
-    <dependencyManagement>
-      <dependencies>
+    <dependencies>
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
@@ -223,7 +224,5 @@
             <version>${version.org.kohsuke}</version>
             <scope>provided</scope>
         </dependency>
-      </dependencies>
-    </dependencyManagement>
-
+    </dependencies>
 </project>
