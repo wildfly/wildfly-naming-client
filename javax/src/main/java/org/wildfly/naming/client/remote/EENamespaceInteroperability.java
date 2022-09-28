@@ -33,7 +33,7 @@ import static org.wildfly.naming.client.remote.RemoteNamingService.LATEST_VERSIO
  */
 final class EENamespaceInteroperability {
     // Batavia transformer sensible constant - it can start with either "javax." or "jakarta." if transformation was performed
-    private static final String VARIABLE_CONSTANT = "javax.ejb.FAKE_STRING";
+    private static final String VARIABLE_CONSTANT = "jakarta.ejb.FAKE_STRING";
     static final boolean JAKARTAEE_ENVIRONMENT = VARIABLE_CONSTANT.startsWith("jakarta");
 
     /**

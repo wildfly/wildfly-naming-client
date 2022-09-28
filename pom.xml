@@ -36,7 +36,6 @@
 
     <modules>
         <module>javax</module>
-        <module>jakarta</module>
     </modules>
 
     <scm>
