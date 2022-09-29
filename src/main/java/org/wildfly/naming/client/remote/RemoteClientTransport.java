@@ -18,6 +18,27 @@
 
 package org.wildfly.naming.client.remote;
 
+import static org.wildfly.naming.client.remote.ProtocolUtils.createMarshaller;
+import static org.wildfly.naming.client.remote.ProtocolUtils.createUnmarshaller;
+import static org.wildfly.naming.client.remote.ProtocolUtils.readId;
+import static org.wildfly.naming.client.remote.ProtocolUtils.writeId;
+import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
+import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
+import static org.wildfly.naming.client.util.NamingUtils.namingException;
+import static org.xnio.IoUtils.safeClose;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.IntUnaryOperator;
+
+import javax.naming.Binding;
+import javax.naming.CompositeName;
+import javax.naming.Name;
+import javax.naming.NameClassPair;
+import javax.naming.NamingException;
+
 import org.jboss.marshalling.ContextClassResolver;
 import org.jboss.marshalling.Marshaller;
 import org.jboss.marshalling.MarshallingConfiguration;
@@ -40,25 +61,6 @@ import org.wildfly.naming.client.util.NamingUtils;
 import org.xnio.Cancellable;
 import org.xnio.FutureResult;
 import org.xnio.IoFuture;
-
-import javax.naming.Binding;
-import javax.naming.CompositeName;
-import javax.naming.Name;
-import javax.naming.NameClassPair;
-import javax.naming.NamingException;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.IntUnaryOperator;
-
-import static java.lang.Math.min;
-import static org.wildfly.naming.client.remote.ProtocolUtils.*;
-import static org.wildfly.naming.client.remote.RemoteNamingService.*;
-import static org.wildfly.naming.client.remote.TCCLUtils.getAndSetSafeTCCL;
-import static org.wildfly.naming.client.remote.TCCLUtils.resetTCCL;
-import static org.wildfly.naming.client.util.NamingUtils.namingException;
-import static org.xnio.IoUtils.safeClose;
 
 /**
  * The client side of the remote naming transport protocol.
@@ -134,24 +136,20 @@ final class RemoteClientTransport implements RemoteTransport {
                         return;
                     }
                     int length = mis.readUnsignedByte();
-                    boolean hasOne = false, hasTwo = false, hasThree = false;
+                    boolean hasOne = false, hasTwo = false;
                     for (int i = 0; i < length; i ++) {
                         // Servers present versions >= 2 with the MSB set so that old clients don't get confused.
                         // We strip the MSB to compensate.
-                        int v = min(LATEST_VERSION, mis.readUnsignedByte() & 0x7f);
+                        int v = mis.readUnsignedByte() & 0x7f;
                         if (v == 1) {
                             hasOne = true;
                         } else if (v == 2) {
                             hasTwo = true;
-                        } else if (v == 3) {
-                            hasThree = true;
                         }
                     }
                     int version;
-                    if (hasThree) {
-                        version = JAKARTAEE_PROTOCOL_VERSION;
-                    } else if (hasTwo) {
-                        version = JAVAEE_PROTOCOL_VERSION;
+                    if (hasTwo) {
+                        version = 2;
                     } else if (hasOne) {
                         version = 1;
                     } else {
@@ -159,9 +157,7 @@ final class RemoteClientTransport implements RemoteTransport {
                         return;
                     }
                     final MarshallingConfiguration configuration = new MarshallingConfiguration();
-                    configuration.setVersion(version >= 2 ? 4 : 2);
-                    EENamespaceInteroperability.handleInteroperability(configuration, version);
-
+                    configuration.setVersion(version == 2 ? 4 : 2);
                     RemoteClientTransport remoteClientTransport = new RemoteClientTransport(channel, version, configuration);
                     final List<MarshallingCompatibilityHelper> helpers = ProtocolUtils.getMarshallingCompatibilityHelpers();
                     ObjectResolver resolver = null;
