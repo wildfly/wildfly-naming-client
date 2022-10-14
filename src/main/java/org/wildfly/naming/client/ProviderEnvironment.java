@@ -123,44 +123,6 @@ public final class ProviderEnvironment {
      * <pre>{@code
      *
      * URI location = ...
-     * Long timeout = env.getBlackList().get(location);
-     * if (timeout == null || time >= (timeout & TIME_MASK)) {
-     *     // blocklist entry expired!!
-     * } else {
-     *     // Ignoring, still blocklisted!
-     * }
-     *
-     * }</pre>
-     *
-     * @return a concurrent map representing the blocklist
-     *
-     * @deprecated replaced by {@link #getBlocklist()}
-     */
-    @Deprecated
-    public ConcurrentMap<URI, Long> getBlackList() {
-        return blocklist;
-    }
-
-    /**
-     * Gets the blocklist for this provider. The map should generally not be
-     * mutated, with updates instead going through {@link #updateBlocklist(URI)}
-     * and {@link #dropFromBlocklist(URI)}.
-     *
-     * <p>The map is keyed by destination URI, as specified by
-     * <code>PROVIDER_URL</code>. The value is a long that loosely corresponds
-     * to an expiration timestamp. More specifically the time portion is the
-     * first 49 bits, retrievable using a bitwise AND on {@link #TIME_MASK}. The
-     * remaining bits are used to store the current back-off multiplier. These
-     * are typically not of interest to a user or provider implementor, as
-     * {@link #updateBlocklist(URI)} will update them accordingly.
-     * </p>
-     *
-     * <p>A simple provider implementation would perform the falling
-     * pseudo-code when selecting a destination: </p>
-     *
-     * <pre>{@code
-     *
-     * URI location = ...
      * Long timeout = env.getBlocklist().get(location);
      * if (timeout == null || time >= (timeout & TIME_MASK)) {
      *     // blocklist entry expired!!
@@ -174,21 +136,6 @@ public final class ProviderEnvironment {
      */
     public ConcurrentMap<URI, Long> getBlocklist() {
         return blocklist;
-    }
-
-    /**
-     * Adds location to blocklist, or extends it's back-off value if already
-     * present in the blocklist. Each call doubles the back-off time, as well
-     * as resets the starting time. Providers should call this method anytime
-     * a location is non-responsive.
-     *
-     * @param location the URI to blocklist.
-     *
-     * @deprecated replaced by {@link #updateBlocklist(URI)}
-     */
-    @Deprecated
-    public void updateBlacklist(URI location) {
-        updateBlocklist(location);
     }
 
     /**
@@ -225,19 +172,6 @@ public final class ProviderEnvironment {
                 return;
             }
         }
-    }
-
-    /**
-     * Removes the specified location from the blocklist, allowing it to be
-     * used again.
-     *
-     * @param location the location to remove
-     *
-     * @deprecated replaced by {@link #dropFromBlocklist(URI)}
-     */
-    @Deprecated
-    public void dropFromBlacklist(URI location) {
-        blocklist.remove(location);
     }
 
     /**
