@@ -199,8 +199,8 @@ public interface Messages extends BasicLogger {
     @Message(id = 41, value = "Error determining version selected by client")
     void failedToDetermineClientVersion(@Cause Throwable t);
 
-    @Message(id = 42, value = "Cannot specify both a callback handler and a username/password for connection")
-    RuntimeException callbackHandlerAndUsernameAndPasswordSpecified();
+//    @Message(id = 42, value = "Cannot specify both a callback handler and a username/password for connection")
+//    RuntimeException callbackHandlerAndUsernameAndPasswordSpecified();
 
     @Message(id = 43, value = "Unable to load callback handler class \"%s\"")
     RuntimeException failedToLoadCallbackHandlerClass(@Cause Exception cause, String callbackHandlerClass);
