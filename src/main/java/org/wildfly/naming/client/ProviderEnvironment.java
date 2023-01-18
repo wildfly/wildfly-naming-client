@@ -19,9 +19,6 @@
 package org.wildfly.naming.client;
 
 import static java.security.AccessController.doPrivileged;
-import static org.jboss.naming.remote.client.InitialContextFactory.CALLBACK_HANDLER_KEY;
-import static org.jboss.naming.remote.client.InitialContextFactory.PASSWORD_BASE64_KEY;
-import static org.jboss.naming.remote.client.InitialContextFactory.REALM_KEY;
 import static org.wildfly.naming.client.util.EnvironmentUtils.CONNECT_OPTIONS;
 import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_CALLBACK_HANDLER_CLASS_KEY;
 import static org.wildfly.naming.client.util.EnvironmentUtils.EJB_HOST_KEY;
@@ -293,33 +290,15 @@ public final class ProviderEnvironment {
             final String securityProtocol = getEnvString(environment, Context.SECURITY_PROTOCOL, null, true);
             final String globalSslEnabledOption = getEnvString(environment, EJB_REMOTE_CONNECTION_PROVIDER_PREFIX + Options.SSL_ENABLED, null, true);
             final boolean isSsl = globalSslEnabledOption != null ? Boolean.parseBoolean(globalSslEnabledOption) : securityProtocol != null && "ssl".equalsIgnoreCase(securityProtocol.trim());
-            final String callbackClass = getEnvString(environment, CALLBACK_HANDLER_KEY, null, true);
             final IdentityCredentials credentials = EnvironmentUtils.getSecurityCredentials(environment);
-            final String passwordBase64 = getEnvString(environment, PASSWORD_BASE64_KEY, null, false);
-            final String securityRealm = getEnvString(environment, REALM_KEY, null, true);
 
-            if (callbackClass != null && (userName != null || credentials != null || passwordBase64 != null)) {
-                throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
-            }
 
             // we definitely must override default auth if any of these are given; we _may_ have to do so if compat props are given
-            boolean overrideDefaultAuth = credentials != null || passwordBase64 != null || callbackClass != null || securityRealm != null || userName != null;
-            CallbackHandler callbackHandler = null;
-
-            if (callbackClass != null) {
-                try {
-                    final Class<?> clazz = Class.forName(callbackClass, true, classLoader);
-                    callbackHandler = (CallbackHandler) clazz.newInstance();
-                } catch (ClassNotFoundException e) {
-                    throw Messages.log.failedToLoadCallbackHandlerClass(e, callbackClass);
-                } catch (Exception e) {
-                    throw Messages.log.failedToInstantiateCallbackHandlerInstance(e, callbackClass);
-                }
-            }
+            boolean overrideDefaultAuth = credentials != null || userName != null;
 
             OptionMap remotingOptions = getOptionMap(environment, CONNECT_OPTIONS_PREFIX, Builder.class.getClassLoader());
 
-            if (callbackHandler != null || userName != null) {
+            if (userName != null) {
                 // disable quiet local auth
                 remotingOptions = setQuietLocalAuth(remotingOptions, false);
             }
@@ -329,16 +308,8 @@ public final class ProviderEnvironment {
             if (userName != null) {
                 globalAuthConf = globalAuthConf.useName(userName);
             }
-            if (callbackHandler != null) {
-                globalAuthConf = globalAuthConf.useCallbackHandler(callbackHandler);
-            }
             if (credentials != null) {
                 globalAuthConf = globalAuthConf.useCredentials(credentials);
-            } else if (passwordBase64 != null) {
-                globalAuthConf = globalAuthConf.usePassword(CodePointIterator.ofString(passwordBase64).base64Decode().asUtf8String().drainToString());
-            }
-            if (securityRealm != null) {
-                globalAuthConf = globalAuthConf.useRealm(securityRealm);
             }
 
             // ===
@@ -380,10 +351,6 @@ public final class ProviderEnvironment {
                     final boolean sslEnabled = Boolean.parseBoolean(getEnvString(environment, connectionPrefix + CONNECT_OPTIONS + Options.SSL_ENABLED, Boolean.toString(isSsl), true));
                     final String protocol = getEnvString(environment, connectionPrefix + "protocol", sslEnabled ? "remote+https" : "remote+http", true);
                     final int connPort = getEnvInt(environment, connectionPrefix + EJB_PORT_KEY, sslEnabled ? 443 : 80, true);
-
-                    if (connCallbackHandlerClass != null && (connUserName != null || connPassword != null || connPasswordBase64 != null)) {
-                        throw Messages.log.callbackHandlerAndUsernameAndPasswordSpecified();
-                    }
 
                     CallbackHandler connCallbackHandler = null;
 

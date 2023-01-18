@@ -18,8 +18,6 @@
 
 package org.wildfly.naming.client.remote;
 
-import static org.jboss.naming.remote.client.InitialContextFactory.ENDPOINT;
-
 import javax.naming.NamingException;
 
 import org.jboss.remoting3.Endpoint;
@@ -33,6 +31,9 @@ import org.wildfly.naming.client.util.FastHashtable;
  */
 @MetaInfServices
 public final class RemoteNamingProviderFactory implements NamingProviderFactory {
+
+    public static final String ENDPOINT = "wildfly.naming.client.endpoint";
+
     public RemoteNamingProviderFactory() {
     }
 
