@@ -30,7 +30,7 @@
 
     <groupId>org.wildfly</groupId>
     <artifactId>wildfly-naming-client</artifactId>
-    <version>2.0.1.Final</version>
+    <version>2.0.2.Final-SNAPSHOT</version>
     <name>WildFly Naming Client - JakartaEE Variant</name>
 
     <scm>
