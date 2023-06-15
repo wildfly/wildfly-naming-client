@@ -63,7 +63,7 @@
         <version.org.kohsuke>1.9</version.org.kohsuke>
         <version.org.wildfly.client>1.0.1.Final</version.org.wildfly.client>
         <version.org.wildfly.common>1.6.0.Final</version.org.wildfly.common>
-        <version.org.wildfly.security.elytron>2.2.0.Final</version.org.wildfly.security.elytron>
+        <version.org.wildfly.security.elytron>2.2.1.Final</version.org.wildfly.security.elytron>
     </properties>
 
     <build>
