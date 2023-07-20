@@ -60,7 +60,7 @@
         <version.org.jboss.remoting>5.0.27.Final</version.org.jboss.remoting>
         <version.org.jboss.threads>2.4.0.Final</version.org.jboss.threads>
         <version.org.jboss.xnio>3.8.9.Final</version.org.jboss.xnio>
-        <version.org.kohsuke>1.9</version.org.kohsuke>
+        <version.org.kohsuke.metainf-services>1.11</version.org.kohsuke.metainf-services>
         <version.org.wildfly.client>1.0.1.Final</version.org.wildfly.client>
         <version.org.wildfly.common>1.6.0.Final</version.org.wildfly.common>
         <version.org.wildfly.security.elytron>2.2.1.Final</version.org.wildfly.security.elytron>
@@ -253,7 +253,7 @@
         <dependency>
             <groupId>org.kohsuke.metainf-services</groupId>
             <artifactId>metainf-services</artifactId>
-            <version>${version.org.kohsuke}</version>
+            <version>${version.org.kohsuke.metainf-services}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
