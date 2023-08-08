@@ -50,6 +50,7 @@ jobs:
       with:
         distribution: ${{ inputs.jdk-distribution }}
         java-version: ${{ inputs.jdk-version }}
+        cache: 'maven'
     - name: Run Tests
       run: mvn -ntp -U -B -fae clean verify
     - uses: actions/upload-artifact@v3
