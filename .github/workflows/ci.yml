@@ -11,7 +11,7 @@ jobs:
   build-test-matrix:
     name: ${{ matrix.jdk-distribution }}-${{ matrix.jdk-version }}-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +36,7 @@ jobs:
       with:
         distribution: ${{ matrix.jdk-distribution }}
         java-version: ${{ matrix.jdk-version }}
+        cache: 'maven'
     - name: Run Tests
       run: mvn -ntp -U -B -fae clean install
     - uses: actions/upload-artifact@v3
