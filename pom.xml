@@ -51,6 +51,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <version.junit>4.13.2</version.junit>
+        <version.org.jacoco>0.8.11</version.org.jacoco>
         <version.org.jboss.byteman>4.0.22</version.org.jboss.byteman>
         <version.org.jboss.jdeparser>2.0.3.Final</version.org.jboss.jdeparser>
         <version.org.jboss.logging.jboss-logging>3.5.3.Final</version.org.jboss.logging.jboss-logging>
@@ -90,8 +91,27 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <argLine>-Djdk.attach.allowAttachSelf=true -Dorg.jboss.byteman.verbose</argLine>
+                    <argLine>@{argLine} -Djdk.attach.allowAttachSelf=true -Dorg.jboss.byteman.verbose</argLine>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${version.org.jacoco}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>generate-code-coverage-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
