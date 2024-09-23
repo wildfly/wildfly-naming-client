@@ -64,7 +64,7 @@
         <version.org.kohsuke.metainf-services>1.11</version.org.kohsuke.metainf-services>
         <version.org.wildfly.client>1.0.1.Final</version.org.wildfly.client>
         <version.org.wildfly.common>2.0.0</version.org.wildfly.common>
-        <version.org.wildfly.security.elytron>2.5.2.Final</version.org.wildfly.security.elytron>
+        <version.org.wildfly.security.elytron>2.6.0.Final</version.org.wildfly.security.elytron>
         <maven.repository.url>https://repository.jboss.org/nexus/content/groups/public/</maven.repository.url>
     </properties>
 
